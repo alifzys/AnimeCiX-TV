@@ -1,0 +1,28 @@
+# Gradle / Android
+.gradle/
+build/
+/local.properties
+.kotlin/
+/captures
+.externalNativeBuild
+.cxx
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Signing / secrets (ASLA commit etme)
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Çıktılar
+*.apk
+*.aab
+
+# OS
+.DS_Store
+Thumbs.db

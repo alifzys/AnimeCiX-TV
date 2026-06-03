@@ -1,0 +1,17 @@
+# Satır sonlarını normalize et
+* text=auto
+
+# Unix shell script — LF şart (yoksa Linux/macOS'ta çalışmaz)
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Windows batch — CRLF
+*.bat text eol=crlf
+
+# İkili dosyalar
+*.jar binary
+*.png binary
+*.webp binary
+*.jpg binary
+*.keystore binary
+*.jks binary
