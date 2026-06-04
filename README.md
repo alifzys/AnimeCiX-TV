@@ -23,7 +23,7 @@ Jetpack Compose for TV ile yazıldı.
 ---
 
 > [!WARNING]
-> **Bu resmi bir uygulama değildir.** AnimeCiX TV, animecix.tv tarafından desteklenen, onaylanan
+> **Bu resmi bir uygulama değildir.** AnimeCiX TV, animecix.tv sitesi tarafından desteklenen, onaylanan
 > veya onunla bağlantılı **resmi bir uygulama değildir**. Bağımsız geliştiriciler tarafından yapılmış
 > **3. parti (unofficial) bir istemcidir**. Hiçbir içerik barındırmaz; yalnızca herkese açık
 > animecix.tv uçlarını Android TV'de görüntülemek için bir arayüz sağlar. Eğitim ve kişisel
