@@ -13,7 +13,7 @@ Jetpack Compose for TV ile yazıldı.
 
 [![Platform](https://img.shields.io/badge/platform-Android%20TV-3DDC84?logo=android&logoColor=white)](#)
 [![Lisans](https://img.shields.io/badge/lisans-MIT-blue.svg)](LICENSE)
-[![Sürüm](https://img.shields.io/badge/sürüm-1.1.2-orange.svg)](../../releases/latest)
+[![Sürüm](https://img.shields.io/badge/sürüm-1.1.1-orange.svg)](../../releases/latest)
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](#)
 
 [**⬇️ İndir**](#-i̇ndir--kur) · [**✨ Özellikler**](#-özellikler) · [**🛠️ Derle**](#️-kaynaktan-derleme-geliştiriciler)
@@ -74,7 +74,7 @@ Jetpack Compose for TV ile yazıldı.
 **B) ADB ile (bilgisayardan):**
 ```bash
 adb connect <TV_IP>:5555
-adb install -r AnimeCiX-TV-1.1.2-universal.apk
+adb install -r AnimeCiX-TV-1.1.1-universal.apk
 ```
 
 > 💡 Zayıf TV'lerde takılma yaşarsan release sürümünü kullandığından emin ol — R8 optimizasyonu sayesinde belirgin şekilde daha akıcıdır.
