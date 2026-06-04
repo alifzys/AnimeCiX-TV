@@ -53,6 +53,16 @@ Jetpack Compose for TV ile yazıldı.
 
 <br>
 
+## 🖼️ Ekran Görüntüleri
+
+| Ana Ekran | Detay Sayfası |
+|:---:|:---:|
+| ![Ana Ekran](docs/screenshots/home.png) | ![Detay](docs/screenshots/detail.png) |
+| **Oynatıcı** | **Arama** |
+| ![Oynatıcı](docs/screenshots/player.png) | ![Arama](docs/screenshots/search.png) |
+
+<br>
+
 ## ⬇️ İndir & Kur
 
 ### 1) APK'yı indir
