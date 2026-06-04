@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import com.alifzys.an1mecix.ui.components.UpdateOverlay
 import com.alifzys.an1mecix.ui.navigation.AppNavHost
 import com.alifzys.an1mecix.ui.theme.AnimeCixTheme
 
@@ -26,6 +27,8 @@ class MainActivity : ComponentActivity() {
                         .background(Color(0xFF0A0A0F))
                 ) {
                     AppNavHost(container = container)
+                    // Açılışta otomatik güncelleme kontrolü (varsa indir + kur)
+                    UpdateOverlay()
                 }
             }
         }
