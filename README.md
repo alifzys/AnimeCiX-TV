@@ -1,59 +1,135 @@
-# AnimeCiX TV — Resmi Olmayan Android TV İstemcisi
+<div align="center">
 
-> ⚠️ **Resmi değildir.** Bu uygulama **animecix.tv** ile bağlantılı, onun tarafından
-> desteklenen veya onaylanan resmi bir uygulama **değildir**. Bağımsız geliştiriciler
-> tarafından yapılmış **3. parti (unofficial) bir istemcidir**. Tüm içerik ve veriler
-> animecix.tv'ye aittir; bu uygulama yalnızca o içeriği Android TV'de görüntülemek için
-> bir arayüz sağlar. Eğitim ve kişisel kullanım amaçlıdır.
+# 📺 AnimeCiX TV
 
-Android TV / Google TV için **Kotlin + Jetpack Compose for TV** ile yazılmış anime
-izleme istemcisi. D-pad ile gezinme, ExoPlayer tabanlı oynatıcı, opening/ending atlama,
-kalite/hız/fansub seçimi, izleme geçmişi ve görüntü iyileştirme (sharpen / Anime4K) içerir.
+### Android TV & Google TV için anime izleme istemcisi
 
-## Teknolojiler
+Kumandanla (D-pad) baştan sona kullanılabilen, akıcı ve şık bir arayüz.
+Jetpack Compose for TV ile yazıldı.
 
-- **Dil:** Kotlin
-- **UI:** Jetpack Compose for TV (`androidx.tv:tv-material`)
-- **Oynatıcı:** Media3 / ExoPlayer (+ `media3-effect` GL shader pipeline)
-- **Ağ:** OkHttp + kotlinx.serialization
-- **Yerel veri:** Room (izleme geçmişi / liste)
-- **Görsel:** Coil
-- **Min SDK:** 23 · **Target/Compile SDK:** 34 / 35
+<br>
 
-## Derleme
+[![Platform](https://img.shields.io/badge/platform-Android%20TV-3DDC84?logo=android&logoColor=white)](#)
+[![Lisans](https://img.shields.io/badge/lisans-MIT-blue.svg)](LICENSE)
+[![Sürüm](https://img.shields.io/badge/sürüm-1.1.1-orange.svg)](../../releases/latest)
+[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](#)
 
-Gereksinimler: **JDK 17**, **Android SDK 35**, Android Studio (Ladybug+) veya komut satırı.
+[**⬇️ İndir**](#-i̇ndir--kur) · [**✨ Özellikler**](#-özellikler) · [**🛠️ Derle**](#️-kaynaktan-derleme-geliştiriciler)
+
+</div>
+
+---
+
+> [!WARNING]
+> **Bu resmi bir uygulama değildir.** AnimeCiX TV, animecix.tv tarafından desteklenen, onaylanan
+> veya onunla bağlantılı **resmi bir uygulama değildir**. Bağımsız geliştiriciler tarafından yapılmış
+> **3. parti (unofficial) bir istemcidir**. Hiçbir içerik barındırmaz; yalnızca herkese açık
+> animecix.tv uçlarını Android TV'de görüntülemek için bir arayüz sağlar. Eğitim ve kişisel
+> kullanım amaçlıdır. Tüm içerik ve telif hakları sahiplerine aittir.
+
+<br>
+
+## ✨ Özellikler
+
+🏠 **Ana Ekran** — Öne çıkan içerik vitrini, kategori satırları, son eklenen bölümler ve **kaldığın yerden devam et**
+
+📺 **Detay Sayfası** — Puan, tür, süre, oyuncu kadrosu, benzer yapımlar, sezon/bölüm listesi ve kişisel **izleme listesi**
+
+▶️ **Güçlü Oynatıcı** *(Media3 / ExoPlayer)*
+- 🎚️ Kalite seçimi (480p / 720p / 1080p)
+- 🌐 Fansub / kaynak seçimi
+- ⏩ Oynatma hızı (0.5× – 2×)
+- ⏭️ Opening / Ending **otomatik atlama** + sonraki bölüme **otomatik geçiş**
+- ⏯️ Kaldığın yerden devam (konumu hatırlar)
+- 🪄 **Görüntü iyileştirme** — gerçek zamanlı GL shader: **Keskinlik** ve **Anime4K** (upscale + çizgi netleştirme)
+
+🔍 **Arama & Kategoriler** — Ekran üstü klavye, popüler animeler, arama geçmişi ve türlere göre tarama
+
+⚙️ **Ayarlar** — Varsayılan kalite, otomatik atlama, görüntü iyileştirme modu ve daha fazlası
+
+<br>
+
+## ⬇️ İndir & Kur
+
+### 1) APK'yı indir
+[**📦 En son sürüm (Releases)**](../../releases/latest) sayfasından TV'ne uygun dosyayı indir:
+
+| Dosya | Kimin için? |
+|------|-------------|
+| **`universal`** | 🟢 **Emin değilsen bunu indir** — her ARM TV'de çalışır |
+| **`arm64-v8a`** | Yeni / 64-bit TV'ler |
+| **`armeabi-v7a`** | Eski / 32-bit TV'ler |
+
+### 2) TV'ye kur
+
+**A) Dosya yöneticisiyle (en kolay):**
+1. APK'yı bir USB belleğe at veya TV'ye indir
+2. TV'de bir dosya yöneticisiyle APK'yı aç
+3. "Bilinmeyen kaynaklara izin ver" çıkarsa onayla → **Yükle**
+
+**B) ADB ile (bilgisayardan):**
+```bash
+adb connect <TV_IP>:5555
+adb install -r AnimeCiX-TV-1.1.1-universal.apk
+```
+
+> 💡 Zayıf TV'lerde takılma yaşarsan release sürümünü kullandığından emin ol — R8 optimizasyonu sayesinde belirgin şekilde daha akıcıdır.
+
+<br>
+
+## 🎮 Kullanım
+
+Tamamen kumanda ile çalışır:
+
+| Tuş | İşlev |
+|-----|-------|
+| **Yön tuşları** | Gezinme |
+| **OK / Seç** | Aç / oynat-duraklat |
+| **◀ ▶ (oynatıcıda)** | Geri / ileri sar |
+| **▼ (oynatıcıda)** | Kontrol butonlarına geç |
+| **Geri** | Önceki ekran |
+
+<br>
+
+## 🛠️ Kaynaktan Derleme (Geliştiriciler)
+
+**Gereksinimler:** JDK 17 · Android SDK 35 · Android Studio (Ladybug+) *ya da* komut satırı
 
 ```bash
 # 1) Android SDK yolunu tanımla (Android Studio kullanmıyorsan)
-#    Proje kökünde local.properties oluştur:
 echo "sdk.dir=/ANDROID/SDK/YOLU" > local.properties
 
 # 2) Release APK derle
 ./gradlew assembleRelease
-# Çıktı: app/build/outputs/apk/release/app-release.apk
+# Çıktı: app/build/outputs/apk/release/
 
-# 3) TV'ye kur (adb ile)
-adb install -r app/build/outputs/apk/release/app-release.apk
+# 3) TV'ye kur
+adb install -r app/build/outputs/apk/release/app-universal-release.apk
 ```
 
-Debug için: `./gradlew assembleDebug`. Not: zayıf TV'lerde **release** build belirgin
-şekilde daha akıcıdır (R8 + optimizasyon).
+Derleme **32-bit, 64-bit ve universal** olmak üzere üç APK üretir. Debug için: `./gradlew assembleDebug`.
 
-## Paket adı
+### Teknolojiler
+`Kotlin` · `Jetpack Compose for TV` · `Media3 / ExoPlayer` *(+ GL shader pipeline)* · `OkHttp` · `kotlinx.serialization` · `Room` · `Coil`
+**minSdk** 23 · **target/compile SDK** 34 / 35
 
-`com.alifzys.an1mecix` — resmi animecix uygulamasından ayırt edilebilmesi için bilinçli
-olarak farklı bir paket adı kullanılır.
+### Paket adı
+`com.alifzys.an1mecix` — resmi animecix uygulamasından ayırt edilebilmesi için bilinçli olarak farklıdır.
 
-## Sorumluluk Reddi
+<br>
 
-Bu proje hiçbir içeriği barındırmaz veya dağıtmaz; yalnızca herkese açık animecix.tv
-uçlarına istek atar. Geliştiriciler, uygulamanın kullanımından doğabilecek sonuçlardan
-sorumlu değildir. Marka ve telif hakları ilgili sahiplerine aittir.
+## 📄 Lisans & Sorumluluk
 
-## Lisans
+Kaynak kodu **[MIT](LICENSE)** lisansı altındadır © 2026 alifzys.
 
-[MIT](LICENSE) © 2026 alifzys
+Bu proje hiçbir içeriği barındırmaz veya dağıtmaz; yalnızca herkese açık animecix.tv uçlarına istek atar.
+Erişilen içerik ve veriler animecix.tv'ye aittir ve MIT lisansının kapsamı dışındadır. Geliştiriciler,
+uygulamanın kullanımından doğabilecek sonuçlardan sorumlu değildir.
 
-Not: MIT lisansı bu uygulamanın **kendi kaynak koduna** uygulanır. Erişilen içerik ve
-veriler animecix.tv'ye aittir ve bu lisansın kapsamı dışındadır.
+<div align="center">
+
+<br>
+
+**❤️ ile yapıldı** · Beğendiysen repoya ⭐ bırakmayı unutma!
+
+</div>
