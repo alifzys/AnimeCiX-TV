@@ -23,6 +23,17 @@ android {
         }
     }
 
+    // Releases için ayrı APK'lar üret: 32-bit, 64-bit + hepsini içeren universal.
+    // (Tek native kütüphane androidx.graphics.path; universal her ARM TV'de çalışır.)
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = true
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
