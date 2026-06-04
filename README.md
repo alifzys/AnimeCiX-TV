@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/banner.png" alt="AnimeCiX TV" width="600">
+
 # 📺 AnimeCiX TV
 
 ### Android TV & Google TV için anime izleme istemcisi
