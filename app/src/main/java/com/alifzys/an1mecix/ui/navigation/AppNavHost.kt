@@ -16,6 +16,7 @@ import com.alifzys.an1mecix.ui.player.PlayerScreen
 import com.alifzys.an1mecix.ui.search.SearchScreen
 import com.alifzys.an1mecix.ui.categories.CategoriesScreen
 import com.alifzys.an1mecix.ui.categories.BrowseScreen
+import com.alifzys.an1mecix.ui.saved.SavedScreen
 import com.alifzys.an1mecix.ui.settings.SettingsScreen
 
 object Routes {
@@ -23,6 +24,7 @@ object Routes {
     const val SEARCH = "search"
     const val CATEGORIES = "categories"
     const val SETTINGS = "settings"
+    const val SAVED = "saved"
     const val DETAIL = "detail/{titleId}"
     fun detail(id: Int) = "detail/$id"
     const val BROWSE = "browse/{slug}/{name}"
@@ -30,6 +32,8 @@ object Routes {
     const val PLAYER = "player/{titleId}/{seasonNumber}/{episodeId}/{sourceId}"
     fun player(titleId: Int, seasonNumber: Int, episodeId: Int, sourceId: Int = -1) =
         "player/$titleId/$seasonNumber/$episodeId/$sourceId"
+    const val OFFLINE_PLAYER = "offline/{episodeId}"
+    fun offlinePlayer(episodeId: Int) = "offline/$episodeId"
 }
 
 @Composable
@@ -51,10 +55,18 @@ fun AppNavHost(container: AppContainer) {
                 onOpenSearch = { nav.navigate(Routes.SEARCH) },
                 onOpenCategories = { nav.navigate(Routes.CATEGORIES) },
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                onOpenSaved = { nav.navigate(Routes.SAVED) },
             )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { nav.popBackStack() })
+        }
+        composable(Routes.SAVED) {
+            SavedScreen(
+                container = container,
+                onPlayOffline = { episodeId -> nav.navigate(Routes.offlinePlayer(episodeId)) },
+                onBack = { nav.popBackStack() },
+            )
         }
         composable(Routes.SEARCH) {
             SearchScreen(
@@ -114,6 +126,20 @@ fun AppNavHost(container: AppContainer) {
                 episodeId = entry.arguments?.getInt("episodeId") ?: 0,
                 sourceId = entry.arguments?.getInt("sourceId") ?: -1,
                 onBack = { nav.popBackStack() },
+            )
+        }
+        composable(
+            Routes.OFFLINE_PLAYER,
+            arguments = listOf(navArgument("episodeId") { type = NavType.IntType })
+        ) { entry ->
+            PlayerScreen(
+                container = container,
+                titleId = 0,
+                seasonNumber = 1,
+                episodeId = entry.arguments?.getInt("episodeId") ?: 0,
+                sourceId = -1,
+                onBack = { nav.popBackStack() },
+                offline = true,
             )
         }
     }

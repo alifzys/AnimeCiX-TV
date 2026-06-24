@@ -9,6 +9,7 @@ import coil.request.CachePolicy
 import com.alifzys.an1mecix.data.api.AnimeCixService
 import com.alifzys.an1mecix.data.api.HttpClient
 import com.alifzys.an1mecix.data.api.TauVideoService
+import com.alifzys.an1mecix.data.download.DownloadManager
 import com.alifzys.an1mecix.data.local.AppDatabase
 import com.alifzys.an1mecix.data.repository.AnimeRepository
 import com.alifzys.an1mecix.data.repository.UserDataRepository
@@ -57,5 +58,10 @@ class AppContainer(app: Application) {
         historyDao = db.historyDao(),
         watchlistDao = db.watchlistDao(),
         ratingDao = db.ratingDao(),
+    )
+    val downloadManager = DownloadManager(
+        appContext = app.applicationContext,
+        tau = tauResolver,
+        dao = db.savedEpisodeDao(),
     )
 }

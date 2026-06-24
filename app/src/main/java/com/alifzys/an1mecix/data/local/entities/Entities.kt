@@ -39,3 +39,37 @@ data class RatingEntry(
     val rating: Int,
     val updatedAt: Long,
 )
+
+/**
+ * Kaydedilen / çevrimdışı indirilen bölüm. Tek bir [episodeId] = tek satır.
+ * Hem "kaydedilenler" yer imi listesi hem indirme durumu burada tutulur.
+ * [status]: 0=bekliyor, 1=iniyor, 2=tamamlandı, 3=hata.
+ */
+@Entity(tableName = "saved_episodes")
+data class SavedEpisodeEntry(
+    @PrimaryKey val episodeId: Int,
+    val titleId: Int,
+    val titleName: String,
+    val titlePoster: String?,
+    val titleBackdrop: String?,
+    val seasonNumber: Int,
+    val episodeNumber: Float,
+    val episodeName: String?,
+    val episodePoster: String?,
+    /** tau-video embed URL — indirme anında mp4'e çözülür. */
+    val sourceUrl: String,
+    val sourceId: Int,
+    val quality: String?,
+    val filePath: String?,
+    val fileSize: Long,
+    val status: Int,
+    val progress: Int,
+    val savedAt: Long,
+) {
+    companion object {
+        const val STATUS_PENDING = 0
+        const val STATUS_DOWNLOADING = 1
+        const val STATUS_COMPLETED = 2
+        const val STATUS_FAILED = 3
+    }
+}

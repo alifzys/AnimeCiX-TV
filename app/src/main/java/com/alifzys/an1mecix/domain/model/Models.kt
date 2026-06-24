@@ -70,6 +70,8 @@ data class Episode(
     val description: String? = null,
     val poster: String? = null,
     val tmdbVoteAverage: Double? = null,
+    /** Yayın tarihi, gösterime hazır biçimde ("15.01.2024"). API'de varsa. */
+    val releaseDate: String? = null,
     val sources: List<VideoSource>,
 )
 

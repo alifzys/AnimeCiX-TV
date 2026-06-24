@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.alifzys.an1mecix.data.local.entities.HistoryEntry
 import com.alifzys.an1mecix.data.local.entities.RatingEntry
+import com.alifzys.an1mecix.data.local.entities.SavedEpisodeEntry
 import com.alifzys.an1mecix.data.local.entities.WatchlistEntry
 import kotlinx.coroutines.flow.Flow
 
@@ -57,6 +58,38 @@ interface WatchlistDao {
     @Query("DELETE FROM watchlist WHERE titleId = :titleId")
     suspend fun remove(titleId: Int)
 }
+
+@Dao
+interface SavedEpisodeDao {
+    @Query("SELECT * FROM saved_episodes ORDER BY savedAt DESC")
+    fun all(): Flow<List<SavedEpisodeEntry>>
+
+    /** UI'da bölüm satırının kaydet/indir durumunu canlı göstermek için. */
+    @Query("SELECT episodeId, status, progress FROM saved_episodes")
+    fun statuses(): Flow<List<SavedStatus>>
+
+    @Query("SELECT * FROM saved_episodes WHERE episodeId = :episodeId LIMIT 1")
+    suspend fun forEpisode(episodeId: Int): SavedEpisodeEntry?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entry: SavedEpisodeEntry)
+
+    @Query("UPDATE saved_episodes SET status = :status, progress = :progress WHERE episodeId = :episodeId")
+    suspend fun updateProgress(episodeId: Int, status: Int, progress: Int)
+
+    @Query("UPDATE saved_episodes SET status = :status, progress = :progress, filePath = :filePath, fileSize = :fileSize WHERE episodeId = :episodeId")
+    suspend fun markDone(episodeId: Int, status: Int, progress: Int, filePath: String?, fileSize: Long)
+
+    @Query("DELETE FROM saved_episodes WHERE episodeId = :episodeId")
+    suspend fun delete(episodeId: Int)
+}
+
+/** Hafif projeksiyon — sadece durum izleme için. */
+data class SavedStatus(
+    val episodeId: Int,
+    val status: Int,
+    val progress: Int,
+)
 
 @Dao
 interface RatingDao {
