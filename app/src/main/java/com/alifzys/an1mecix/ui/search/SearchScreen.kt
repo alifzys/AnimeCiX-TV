@@ -127,6 +127,7 @@ class SearchViewModel(
         }
     }
 
+    /** Canlı arama — her tuş vuruşunda çağrılır, geçmişe YAZMAZ (önek kirliliği olmasın). */
     fun query(q: String) {
         job?.cancel()
         if (q.isBlank()) { _results.value = emptyList(); return }
@@ -134,9 +135,7 @@ class SearchViewModel(
             delay(350)
             _loading.value = true
             try {
-                val res = repo.search(q)
-                _results.value = res
-                if (res.isNotEmpty()) addToHistory(q)
+                _results.value = repo.search(q)
             } catch (_: Exception) {
                 _results.value = emptyList()
             } finally {
@@ -144,6 +143,9 @@ class SearchViewModel(
             }
         }
     }
+
+    /** Anlamlı arama kaydı — kullanıcı bir sonucu açınca veya "ARA"ya basınca çağrılır. */
+    fun recordSearch(q: String) = addToHistory(q.trim())
 
     class Factory(
         private val app: Application,
@@ -185,7 +187,7 @@ fun SearchScreen(
         text = when (key) {
             "SPACE" -> "$text "
             "⌫"    -> if (text.isNotEmpty()) text.dropLast(1) else text
-            "ARA"   -> { vm.query(text); text }
+            "ARA"   -> { vm.recordSearch(text); vm.query(text); text }
             else    -> text + key
         }
         if (key != "ARA") vm.query(text)
@@ -309,7 +311,14 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         items(results, key = { it.id }) { card ->
-                            PosterCard(item = card, onClick = { onOpenDetail(card.id) })
+                            PosterCard(
+                                item = card,
+                                onClick = {
+                                    // Sonuç açıldı → bu sorgu anlamlı, geçmişe tam haliyle kaydet
+                                    vm.recordSearch(text)
+                                    onOpenDetail(card.id)
+                                },
+                            )
                         }
                     }
                 }

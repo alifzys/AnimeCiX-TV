@@ -1,6 +1,7 @@
 package com.alifzys.an1mecix.data.api
 
 import com.alifzys.an1mecix.BuildConfig
+import com.alifzys.an1mecix.core.Constants
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -8,8 +9,6 @@ import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
 object HttpClient {
-    const val ANIMECIX_BASE = "https://animecix.tv"
-
     private const val UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -30,7 +29,7 @@ object HttpClient {
             .header("Sec-Ch-Ua", "\"Chromium\";v=\"130\", \"Google Chrome\";v=\"130\", \"Not?A_Brand\";v=\"99\"")
             .header("Sec-Ch-Ua-Mobile", "?0")
             .header("Sec-Ch-Ua-Platform", "\"Windows\"")
-            .header("Referer", "$ANIMECIX_BASE/")
+            .header("Referer", "${Constants.ANIMECIX_BASE}/")
             .header("Sec-Fetch-Dest", "empty")
             .header("Sec-Fetch-Mode", "cors")
             .header("Sec-Fetch-Site", "same-origin")

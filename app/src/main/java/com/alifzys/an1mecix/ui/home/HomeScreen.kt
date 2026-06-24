@@ -1,5 +1,6 @@
 package com.alifzys.an1mecix.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -15,11 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +45,7 @@ import com.alifzys.an1mecix.domain.model.AnimeCard
 import com.alifzys.an1mecix.domain.model.FeaturedItem
 import com.alifzys.an1mecix.ui.components.FullScreenLoading
 import com.alifzys.an1mecix.ui.components.PosterRow
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -49,6 +54,7 @@ fun HomeScreen(
     onOpenSearch: () -> Unit,
     onOpenCategories: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSaved: () -> Unit,
 ) {
     val vm: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(container.animeRepo, container.userRepo)
@@ -67,6 +73,7 @@ fun HomeScreen(
                 onOpenSearch = onOpenSearch,
                 onOpenCategories = onOpenCategories,
                 onOpenSettings = onOpenSettings,
+                onOpenSaved = onOpenSaved,
             )
         }
     }
@@ -81,16 +88,41 @@ private fun HomeContent(
     onOpenSearch: () -> Unit,
     onOpenCategories: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSaved: () -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val heroFocus = remember { FocusRequester() }
+
+    // Aşağı kaydırılmışken BACK: ortadaki bir satıra atlamak yerine en üste dönüp
+    // hero "İncele" butonuna odaklan. En üstteyken kapalı → sistem (uygulamadan çıkış).
+    val scrolledDown by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
+    BackHandler(enabled = scrolledDown) {
+        scope.launch {
+            listState.animateScrollToItem(0)
+            runCatching { heroFocus.requestFocus() }
+        }
+    }
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().focusGroup(),
         contentPadding = PaddingValues(bottom = 40.dp),
     ) {
         item {
-            TopBar(onOpenSearch = onOpenSearch, onOpenCategories = onOpenCategories, onOpenSettings = onOpenSettings)
+            TopBar(
+                onOpenSearch = onOpenSearch,
+                onOpenCategories = onOpenCategories,
+                onOpenSettings = onOpenSettings,
+                onOpenSaved = onOpenSaved,
+            )
         }
         if (featured != null) {
-            item { HeroBanner(featured = featured, onPlay = { onOpenDetail(featured.card.id) }) }
+            item { HeroBanner(featured = featured, heroFocus = heroFocus, onPlay = { onOpenDetail(featured.card.id) }) }
         }
         if (continueCards.isNotEmpty()) {
             item {
@@ -113,7 +145,12 @@ private fun HomeContent(
 }
 
 @Composable
-private fun TopBar(onOpenSearch: () -> Unit, onOpenCategories: () -> Unit, onOpenSettings: () -> Unit) {
+private fun TopBar(
+    onOpenSearch: () -> Unit,
+    onOpenCategories: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenSaved: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -128,6 +165,8 @@ private fun TopBar(onOpenSearch: () -> Unit, onOpenCategories: () -> Unit, onOpe
         )
         Spacer(Modifier.weight(1f))
         NavChip("KATEGORİLER", onOpenCategories)
+        Spacer(Modifier.width(4.dp))
+        NavChip("İNDİRİLENLER", onOpenSaved)
         Spacer(Modifier.width(4.dp))
         NavChip("ARA", onOpenSearch)
         Spacer(Modifier.width(4.dp))
@@ -158,7 +197,7 @@ private fun NavChip(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HeroBanner(featured: FeaturedItem, onPlay: () -> Unit) {
+private fun HeroBanner(featured: FeaturedItem, heroFocus: FocusRequester, onPlay: () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
@@ -236,16 +275,15 @@ private fun HeroBanner(featured: FeaturedItem, onPlay: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(28.dp))
-            HeroButton(onClick = onPlay)
+            HeroButton(focus = heroFocus, onClick = onPlay)
         }
     }
 }
 
 @Composable
-private fun HeroButton(onClick: () -> Unit) {
+private fun HeroButton(focus: FocusRequester, onClick: () -> Unit) {
     // Açılışta odak İncele butonuna gelsin: kumandada OK'a basınca direkt
     // vitrindeki animenin detayına girilir (buton net şekilde işlevli).
-    val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     androidx.tv.material3.Surface(
         onClick = onClick,

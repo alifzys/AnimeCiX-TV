@@ -14,8 +14,8 @@ android {
         applicationId = "com.alifzys.an1mecix"
         minSdk = 23           // Compose for TV minSdk 21 ama Media3 + Room rahat etsin diye 23
         targetSdk = 34
-        versionCode = 4          // görünmez monoton sayaç (eski 1.1.1 = 3'ün üstüne kurulsun)
-        versionName = "1.1.1"
+        versionCode = 5          // görünmez monoton sayaç (eski 1.1.1 = 4'ün üstüne kurulsun)
+        versionName = "1.1.2"
 
         // TV chipset 32-bit ARM (armeabi-v7a). Diğer ABI binary'lerini APK'ya koymaya gerek yok.
         ndk {
@@ -68,6 +68,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
         freeCompilerArgs += listOf("-Xcontext-receivers")
+    }
+
+    testOptions {
+        // android.util.* framework stub'ları exception fırlatmak yerine default dönsün;
+        // saf JVM birim testleri Android'e değen yardımcılarda patlamasın.
+        unitTests.isReturnDefaultValues = true
     }
 
     packaging {
@@ -127,4 +133,9 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // ---- Test (saf JVM birim testleri: app/src/test) ----
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    // kotlinx-serialization-json yukarıda implementation olarak test classpath'inde mevcut.
 }

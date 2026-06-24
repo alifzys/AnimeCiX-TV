@@ -8,25 +8,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,19 +22,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,8 +39,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.alifzys.an1mecix.AppContainer
 import com.alifzys.an1mecix.domain.model.Episode
@@ -84,7 +61,6 @@ private const val OPENING_SHOW_END = 85L       // bu saniyeye kadar göster
 private const val OPENING_SKIP_TO_MS = 90_000L // "Atla" → buraya sar
 private const val ENDING_SHOW_MIN = 4L         // bitişe kalan sn alt sınır
 private const val ENDING_SHOW_MAX = 90L        // bitişe kalan sn üst sınır
-private const val SKIP_COUNTDOWN = 10          // geri sayım (sn)
 
 @androidx.media3.common.util.UnstableApi
 @Composable
@@ -95,12 +71,14 @@ fun PlayerScreen(
     episodeId: Int,
     sourceId: Int,
     onBack: () -> Unit,
+    offline: Boolean = false,
 ) {
     val vm: PlayerViewModel = viewModel(
-        key = "player-$titleId-$seasonNumber-$episodeId-$sourceId",
+        key = "player-${if (offline) "off-" else ""}$titleId-$seasonNumber-$episodeId-$sourceId",
         factory = PlayerViewModel.Factory(
             titleId, seasonNumber, episodeId, sourceId,
-            container.animeRepo, container.userRepo, container.tauResolver
+            container.animeRepo, container.userRepo, container.tauResolver,
+            container.downloadManager, offline,
         )
     )
     val state by vm.state.collectAsStateWithLifecycle()
@@ -139,16 +117,23 @@ private fun PlayerContent(
     val prevEp = if (epIdx > 0) episodes[epIdx - 1] else null
     val nextEp = if (epIdx < episodes.size - 1) episodes[epIdx + 1] else null
 
+    val isOffline = state.stream.provider == "offline"
     val exoPlayer = remember {
-        val ds = DefaultHttpDataSource.Factory().apply {
-            setUserAgent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-            )
-            state.stream.referer?.let { setDefaultRequestProperties(mapOf("Referer" to it)) }
+        val sourceFactory = if (isOffline) {
+            // Lokal dosya (file://) — default data source file şemasını açar.
+            DefaultMediaSourceFactory(context)
+        } else {
+            val ds = DefaultHttpDataSource.Factory().apply {
+                setUserAgent(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                        "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+                )
+                state.stream.referer?.let { setDefaultRequestProperties(mapOf("Referer" to it)) }
+            }
+            DefaultMediaSourceFactory(context).setDataSourceFactory(ds)
         }
         ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(ds))
+            .setMediaSourceFactory(sourceFactory)
             .build()
             .also { p ->
                 // Görüntü iyileştirme (ayarlardan) — GL shader pipeline.
@@ -168,11 +153,20 @@ private fun PlayerContent(
             }
     }
 
+    // Hangi bölüm için hazırlık yapıldığını izle: aynı bölümde sadece KALİTE
+    // değiştiğinde baştan başlamasın, mevcut konumdan devam etsin.
+    var preparedEpisodeId by remember { mutableStateOf(-1) }
     LaunchedEffect(state.currentQuality.url) {
+        val sameEpisode = state.episode.id == preparedEpisodeId
+        // setMediaItem'dan ÖNCE: currentPosition hâlâ eski (oynayan) videonun konumu.
+        val keepPositionMs = if (sameEpisode) exoPlayer.currentPosition else 0L
         exoPlayer.setMediaItem(MediaItem.fromUri(state.currentQuality.url))
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
-        state.resumeAt?.let { exoPlayer.seekTo((it * 1000).toLong()) }
+        val seekTargetMs = if (sameEpisode) keepPositionMs
+            else state.resumeAt?.let { (it * 1000).toLong() } ?: 0L
+        if (seekTargetMs > 0) exoPlayer.seekTo(seekTargetMs)
+        preparedEpisodeId = state.episode.id
     }
 
     var positionMs by remember { mutableLongStateOf(0L) }
@@ -371,441 +365,7 @@ private fun PlayerContent(
     }
 }
 
-// ---------- Overlay ----------
-
-@Composable
-private fun PlayerOverlay(
-    title: String,
-    seasonNumber: Int,
-    episodeNumber: Float,
-    isPlaying: () -> Boolean,
-    positionMs: () -> Long,
-    durationMs: () -> Long,
-    qualityLabel: String,
-    currentSpeed: Float,
-    fansubLabel: String,
-    hasMultipleSources: Boolean,
-    prevEp: Episode?,
-    nextEp: Episode?,
-    playFocus: FocusRequester,
-    barFocus: FocusRequester,
-    onSeekBack: () -> Unit,
-    onSeekFwd: () -> Unit,
-    onTogglePlay: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenSpeed: () -> Unit,
-    onOpenFansub: () -> Unit,
-    onPlayEpisode: (Episode) -> Unit,
-) {
-    val pct = androidx.compose.runtime.remember {
-        androidx.compose.runtime.derivedStateOf {
-            val d = durationMs(); val p = positionMs()
-            if (d > 0) (p.toFloat() / d).coerceIn(0f, 1f) else 0f
-        }
-    }
-
-    Box(Modifier.fillMaxSize()) {
-
-        // Üst gradient
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.18f)
-                .align(Alignment.TopCenter)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color(0xBB000000),
-                        1f to Color.Transparent,
-                    )
-                )
-        )
-        // Alt gradient
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.30f)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        1f to Color(0xF0000000),
-                    )
-                )
-        )
-
-        // ── Üst sol: başlık + S1 B2 ─────────────────────────────
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 40.dp, top = 22.dp),
-        ) {
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 560.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = "S${seasonNumber} B${numStr(episodeNumber)}",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 14.sp,
-            )
-        }
-
-        // ── Alt kontrol çubuğu ────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(start = 40.dp, end = 40.dp, bottom = 20.dp),
-        ) {
-            ProgressBar(
-                pct = pct.value,
-                barFocus = barFocus,
-                onSeekBack = onSeekBack,
-                onSeekFwd = onSeekFwd,
-                onTogglePlay = onTogglePlay,
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                SmallPlayBtn(
-                    isPlaying = isPlaying(),
-                    playFocus = playFocus,
-                    onTogglePlay = onTogglePlay,
-                )
-                Spacer(Modifier.width(12.dp))
-
-                TimeText(positionMs = positionMs, durationMs = durationMs)
-                Spacer(Modifier.width(10.dp))
-
-                CtrlPill(text = qualityLabel, onClick = onOpenSettings)
-                Spacer(Modifier.width(6.dp))
-
-                val speedLabel = when (currentSpeed) {
-                    0.5f  -> "0.5×"
-                    0.75f -> "0.75×"
-                    1f    -> "1×"
-                    1.25f -> "1.25×"
-                    1.5f  -> "1.5×"
-                    2f    -> "2×"
-                    else  -> "$currentSpeed×"
-                }
-                CtrlPill(text = speedLabel, onClick = onOpenSpeed)
-
-                if (hasMultipleSources) {
-                    Spacer(Modifier.width(6.dp))
-                    CtrlPill(text = "⚑ $fansubLabel", onClick = onOpenFansub)
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                prevEp?.let { ep ->
-                    CtrlPill(
-                        text = "◀ B${numStr(ep.episodeNumber)}",
-                        onClick = { onPlayEpisode(ep) },
-                    )
-                    Spacer(Modifier.width(6.dp))
-                }
-
-                nextEp?.let { ep ->
-                    CtrlPill(
-                        text = "B${numStr(ep.episodeNumber)} ▶",
-                        onClick = { onPlayEpisode(ep) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimeText(positionMs: () -> Long, durationMs: () -> Long) {
-    Text(
-        text = "${fmtTime(positionMs())} / ${fmtTime(durationMs())}",
-        color = Color.White.copy(alpha = 0.85f),
-        fontSize = 14.sp,
-    )
-}
-
-// ---------- Alt butonlar ----------
-
-@Composable
-private fun SmallPlayBtn(
-    isPlaying: Boolean,
-    playFocus: FocusRequester,
-    onTogglePlay: () -> Unit,
-) {
-    Surface(
-        onClick = onTogglePlay,
-        modifier = Modifier
-            .size(38.dp)
-            .focusRequester(playFocus),
-        shape = ClickableSurfaceDefaults.shape(CircleShape),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            contentColor = Color.White.copy(alpha = 0.6f),
-            focusedContainerColor = Color.Transparent,
-            focusedContentColor = Color.White,
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.18f),
-    ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = if (isPlaying) "❚❚" else "▶",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CtrlPill(text: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0x44FFFFFF),
-            contentColor = Color.White,
-            focusedContainerColor = Color.White,
-            focusedContentColor = Color.Black,
-        ),
-    ) {
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-        )
-    }
-}
-
-@Composable
-private fun ProgressBar(
-    pct: Float,
-    barFocus: FocusRequester,
-    onSeekBack: () -> Unit,
-    onSeekFwd: () -> Unit,
-    onTogglePlay: () -> Unit,
-) {
-    // Birincil oynatıcı odağı: kontroller açılınca buraya odaklanılır.
-    // SOL/SAĞ → ileri-geri sarma, OK → duraklat/devam. AŞAĞI → buton satırı.
-    var focused by remember { mutableStateOf(false) }
-    val barH = if (focused) 4.dp else 2.dp
-    val dotSize = if (focused) 16.dp else 10.dp
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(18.dp)
-            .focusRequester(barFocus)
-            .onFocusChanged { focused = it.isFocused }
-            .focusable()
-            .onKeyEvent { ev ->
-                if (ev.type != KeyEventType.KeyDown) return@onKeyEvent false
-                when (ev.nativeKeyEvent.keyCode) {
-                    AKeyEvent.KEYCODE_DPAD_LEFT  -> { onSeekBack(); true }
-                    AKeyEvent.KEYCODE_DPAD_RIGHT -> { onSeekFwd();  true }
-                    AKeyEvent.KEYCODE_DPAD_CENTER,
-                    AKeyEvent.KEYCODE_ENTER,
-                    AKeyEvent.KEYCODE_NUMPAD_ENTER,
-                    AKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { onTogglePlay(); true }
-                    else -> false
-                }
-            },
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        // Arka plan izi
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(barH)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color.White.copy(alpha = if (focused) 0.3f else 0.22f))
-        )
-        // Dolu kısım
-        if (pct > 0.001f) {
-            Box(
-                Modifier
-                    .fillMaxWidth(pct)
-                    .height(barH)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(if (focused) Color(0xFFE53935) else Color.White)
-            )
-        }
-        // Seeker dot — dolu kısmın ucunda, dikeyde ortalanmış
-        Box(
-            Modifier
-                .fillMaxWidth(pct.coerceAtLeast(0f))
-                .fillMaxHeight(),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            Box(
-                Modifier
-                    .offset(x = (dotSize.value / 2).dp)
-                    .size(dotSize)
-                    .clip(CircleShape)
-                    .background(if (focused) Color(0xFFE53935) else Color.White)
-            )
-        }
-    }
-}
-
-// ---------- Kalite seçici ----------
-
-@Composable
-private fun QualitySheet(
-    qualities: List<StreamQuality>,
-    current: StreamQuality,
-    onSelect: (StreamQuality) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val firstFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color(0xBB000000))
-            .onKeyEvent { ev ->
-                if (ev.type == KeyEventType.KeyDown &&
-                    ev.nativeKeyEvent.keyCode == AKeyEvent.KEYCODE_BACK
-                ) { onDismiss(); true } else false
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .width(440.dp)
-                .background(Color(0xFF15151E), RoundedCornerShape(18.dp))
-                .padding(horizontal = 28.dp, vertical = 26.dp)
-                .focusGroup(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "Kalite Seç",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 20.dp),
-            )
-            qualities.forEachIndexed { idx, q ->
-                val selected = q.label == current.label
-                val mod = if (idx == 0)
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp).focusRequester(firstFocus)
-                else
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp)
-                Surface(
-                    onClick = { onSelect(q) },
-                    modifier = mod,
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = if (selected) Color(0xFFE53935) else Color(0x22FFFFFF),
-                        contentColor = Color.White,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
-                    ),
-                ) {
-                    Text(
-                        text = if (selected) "● ${q.label}" else q.label,
-                        fontSize = 17.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 15.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ---------- Hız seçici ----------
-
-private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
-
-@Composable
-private fun SpeedSheet(
-    current: Float,
-    onSelect: (Float) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val firstFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color(0xBB000000))
-            .onKeyEvent { ev ->
-                if (ev.type == KeyEventType.KeyDown &&
-                    ev.nativeKeyEvent.keyCode == AKeyEvent.KEYCODE_BACK
-                ) { onDismiss(); true } else false
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .width(420.dp)
-                .background(Color(0xFF15151E), RoundedCornerShape(18.dp))
-                .padding(horizontal = 28.dp, vertical = 26.dp)
-                .focusGroup(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "Oynatma Hızı",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 20.dp),
-            )
-            SPEEDS.forEachIndexed { idx, speed ->
-                val selected = speed == current
-                val label = when (speed) {
-                    0.5f  -> "0.5×"
-                    0.75f -> "0.75×"
-                    1f    -> "1× (Normal)"
-                    1.25f -> "1.25×"
-                    1.5f  -> "1.5×"
-                    2f    -> "2×"
-                    else  -> "$speed×"
-                }
-                val mod = if (idx == 0)
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp).focusRequester(firstFocus)
-                else
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp)
-                Surface(
-                    onClick = { onSelect(speed) },
-                    modifier = mod,
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = if (selected) Color(0xFFE53935) else Color(0x22FFFFFF),
-                        contentColor = Color.White,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
-                    ),
-                ) {
-                    Text(
-                        text = if (selected) "● $label" else label,
-                        fontSize = 17.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 15.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ---------- Fansub (kaynak) seçici ----------
+// ---------- Yardımcılar ----------
 
 /** Pill için kısa fansub etiketi. Temiz ve kısaysa adı, kredi metniyse "Fansub". */
 private fun VideoSource.shortFansubLabel(): String {
@@ -817,173 +377,9 @@ private fun VideoSource.shortFansubLabel(): String {
     return language?.takeIf { it.isNotBlank() }?.uppercase() ?: "Fansub"
 }
 
-/** Menü için tam fansub etiketi. */
-private fun VideoSource.fullFansubLabel(index: Int): String {
-    val f = fansub?.trim()
-    if (!f.isNullOrBlank()) return f
-    val lang = language?.takeIf { it.isNotBlank() }?.uppercase()
-    return if (lang != null) "Kaynak ${index + 1} • $lang" else "Kaynak ${index + 1}"
-}
-
-@Composable
-private fun FansubSheet(
-    sources: List<VideoSource>,
-    current: VideoSource,
-    onSelect: (VideoSource) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val firstFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color(0xBB000000))
-            .onKeyEvent { ev ->
-                if (ev.type == KeyEventType.KeyDown &&
-                    ev.nativeKeyEvent.keyCode == AKeyEvent.KEYCODE_BACK
-                ) { onDismiss(); true } else false
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .width(460.dp)
-                .background(Color(0xFF15151E), RoundedCornerShape(18.dp))
-                .padding(horizontal = 28.dp, vertical = 26.dp)
-                .focusGroup(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "Fansub Seç",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 20.dp),
-            )
-            sources.forEachIndexed { idx, src ->
-                val selected = src.id == current.id
-                val label = src.fullFansubLabel(idx)
-                val mod = if (idx == 0)
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp).focusRequester(firstFocus)
-                else
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp)
-                Surface(
-                    onClick = { onSelect(src) },
-                    modifier = mod,
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = if (selected) Color(0xFFE53935) else Color(0x22FFFFFF),
-                        contentColor = Color.White,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
-                    ),
-                ) {
-                    Text(
-                        text = if (selected) "● $label" else label,
-                        fontSize = 17.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 15.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ---------- Opening / Ending atlama bandı ----------
-
-@Composable
-private fun SkipPrompt(
-    label: String,
-    onSkipNow: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val skipFocus = remember { FocusRequester() }
-    var remaining by remember { mutableStateOf(SKIP_COUNTDOWN) }
-
-    LaunchedEffect(Unit) {
-        runCatching { skipFocus.requestFocus() }
-        while (remaining > 0) {
-            delay(1_000)
-            remaining -= 1
-        }
-        onSkipNow()  // geri sayım bitti → otomatik atla
-    }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .padding(end = 40.dp, bottom = 40.dp),
-        contentAlignment = Alignment.BottomEnd,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .background(Color(0xE6101018), RoundedCornerShape(14.dp))
-                .focusGroup()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        ) {
-            // "Atla" butonu — geri sayımlı
-            Surface(
-                onClick = onSkipNow,
-                modifier = Modifier.focusRequester(skipFocus),
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color(0xFFE53935),
-                    contentColor = Color.White,
-                    focusedContainerColor = Color.White,
-                    focusedContentColor = Color.Black,
-                ),
-            ) {
-                Text(
-                    text = "▶  $label  ($remaining)",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 11.dp),
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            // İptal (✕)
-            Surface(
-                onClick = onDismiss,
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color(0x33FFFFFF),
-                    contentColor = Color.White,
-                    focusedContainerColor = Color.White,
-                    focusedContentColor = Color.Black,
-                ),
-            ) {
-                Text(
-                    text = "✕",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-                )
-            }
-        }
-    }
-}
-
-// ---------- Yardımcılar ----------
-
 @Composable
 private fun CenterText(text: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text = text, color = Color.White, fontSize = 16.sp)
     }
 }
-
-private fun fmtTime(ms: Long): String {
-    val total = (ms / 1000).coerceAtLeast(0)
-    val h = total / 3600
-    val m = (total % 3600) / 60
-    val s = total % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
-}
-
-private fun numStr(n: Float): String =
-    if (n == n.toInt().toFloat()) n.toInt().toString() else n.toString()

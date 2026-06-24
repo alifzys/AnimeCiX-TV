@@ -1,5 +1,6 @@
 package com.alifzys.an1mecix.data.api
 
+import com.alifzys.an1mecix.core.Constants
 import com.alifzys.an1mecix.domain.model.ResolvedStream
 import com.alifzys.an1mecix.domain.model.StreamQuality
 import kotlinx.coroutines.Dispatchers
@@ -20,14 +21,14 @@ class TauVideoService {
     private val http = HttpClient.okHttp
 
     private val embedRe = Regex("""tau-video\.xyz/embed/([A-Za-z0-9]+)""")
-    private val referer = "https://tau-video.xyz/"
+    private val referer = Constants.TAU_BASE
 
     suspend fun resolve(embedUrl: String): ResolvedStream = withContext(Dispatchers.IO) {
         val vid = embedRe.find(embedUrl)?.groupValues?.getOrNull(1)
             ?: throw IllegalArgumentException("tau-video ID bulunamadı: $embedUrl")
 
         val req = Request.Builder()
-            .url("https://tau-video.xyz/api/video/$vid")
+            .url("${Constants.TAU_API}$vid")
             .header("Referer", referer)
             .header("Origin", referer.trimEnd('/'))
             .build()

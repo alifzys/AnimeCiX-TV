@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
+import androidx.annotation.VisibleForTesting
 import com.alifzys.an1mecix.BuildConfig
+import com.alifzys.an1mecix.core.Constants
 import com.alifzys.an1mecix.data.api.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -45,15 +47,12 @@ private data class GithubAsset(
  * izin vermez; PackageInstaller sistem onay ekranını gösterir (tek tık "Kur").
  */
 object UpdateService {
-    private const val API =
-        "https://api.github.com/repos/alifzys/AnimeCiX-TV/releases/latest"
-
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Yeni sürüm varsa UpdateInfo, yoksa null döner. Hata olursa sessizce null. */
     suspend fun check(): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
-            val req = Request.Builder().url(API)
+            val req = Request.Builder().url(Constants.GITHUB_RELEASES_API)
                 .header("Accept", "application/vnd.github+json")
                 .build()
             val body = HttpClient.okHttp.newCall(req).execute().use { resp ->
@@ -74,7 +73,8 @@ object UpdateService {
     }
 
     /** "1.1.2" > "1.1.1" karşılaştırması (her parça sayısal). */
-    private fun isNewer(remote: String, local: String): Boolean {
+    @VisibleForTesting
+    internal fun isNewer(remote: String, local: String): Boolean {
         val r = remote.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
         val l = local.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
         for (i in 0 until maxOf(r.size, l.size)) {

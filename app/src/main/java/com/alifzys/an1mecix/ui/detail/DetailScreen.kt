@@ -55,6 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.alifzys.an1mecix.AppContainer
+import com.alifzys.an1mecix.core.Constants
 import com.alifzys.an1mecix.domain.model.AnimeDetail
 import com.alifzys.an1mecix.domain.model.Episode
 import com.alifzys.an1mecix.domain.model.SeasonInfo
@@ -72,7 +73,8 @@ fun DetailScreen(
     val vm: DetailViewModel = viewModel(
         key = "detail-$titleId",
         factory = DetailViewModel.Factory(
-            titleId, container.animeRepo, container.userRepo, container.tauResolver
+            titleId, container.animeRepo, container.userRepo, container.tauResolver,
+            container.downloadManager,
         )
     )
     val state by vm.state.collectAsStateWithLifecycle()
@@ -88,9 +90,11 @@ fun DetailScreen(
                 detail = s.detail,
                 inWatchlist = s.inWatchlist,
                 seasonLoading = s.seasonLoading,
+                savedStates = s.savedStates,
                 onToggleWatchlist = vm::toggleWatchlist,
                 onSeasonSelected = { vm.selectSeason(it.number) },
                 onPlay = { ep, sourceId -> onPlayEpisode(s.detail.id, ep.seasonNumber, ep.id, sourceId) },
+                onToggleSave = vm::toggleSave,
             )
         }
     }
@@ -101,9 +105,11 @@ private fun DetailContent(
     detail: AnimeDetail,
     inWatchlist: Boolean,
     seasonLoading: Boolean,
+    savedStates: Map<Int, com.alifzys.an1mecix.data.local.SavedStatus>,
     onToggleWatchlist: () -> Unit,
     onSeasonSelected: (SeasonInfo) -> Unit,
     onPlay: (Episode, Int) -> Unit,
+    onToggleSave: (Episode) -> Unit,
 ) {
     // Tıklanan bölüm için fansub seçim ekranı (birden çok kaynak varsa)
     var fansubFor by remember { mutableStateOf<Episode?>(null) }
@@ -157,11 +163,13 @@ private fun DetailContent(
             detail.episodes.forEachIndexed { index, ep ->
                 EpisodeRow(
                     ep,
+                    saved = savedStates[ep.id],
                     onPlay = {
                         val playable = ep.playableSources()
                         if (playable.size > 1) fansubFor = ep
                         else onPlay(ep, playable.firstOrNull()?.id ?: -1)
                     },
+                    onToggleSave = { onToggleSave(ep) },
                     // İlk bölümden YUKARI → focus'u deterministik olarak üstteki butona
                     // yönlendir (focusProperties). Buton artık ekranın üst kısmında (bilgilerin
                     // hemen altında) olduğu için focus oraya gidince backdrop fotoğrafı da
@@ -187,7 +195,7 @@ private fun DetailContent(
 
 /** Bu bölüm için oynatılabilir (tau-video) kaynaklar = fansublar. */
 private fun Episode.playableSources(): List<VideoSource> =
-    sources.filter { "tau-video.xyz" in it.url }
+    sources.filter { Constants.TAU_HOST in it.url }
 
 private fun VideoSource.fansubLabel(index: Int): String {
     val f = fansub?.trim()
@@ -435,83 +443,144 @@ private fun SeasonSelector(seasons: List<SeasonInfo>, current: Int, onSelect: (S
 }
 
 @Composable
-private fun EpisodeRow(episode: Episode, onPlay: () -> Unit, focusUp: FocusRequester? = null) {
+private fun EpisodeRow(
+    episode: Episode,
+    saved: com.alifzys.an1mecix.data.local.SavedStatus?,
+    onPlay: () -> Unit,
+    onToggleSave: () -> Unit,
+    focusUp: FocusRequester? = null,
+) {
     var focused by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 48.dp, vertical = 5.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (focused) Color(0xFF1C1C1E) else Color.Transparent)
-            .border(
-                width = 1.5.dp,
-                color = if (focused) Color.White.copy(alpha = 0.7f) else Color.Transparent,
-                shape = RoundedCornerShape(10.dp),
-            )
-            // İlk bölümde YUKARI focus'unu deterministik olarak üst butona yönlendir.
-            // Key-event ile manuel requestFocus güvenilmezdi; focusProperties kesin çalışır.
-            .focusProperties { if (focusUp != null) up = focusUp }
-            .onFocusChanged { focused = it.isFocused }
-            .focusable()
-            .onKeyEvent { ev ->
-                // KeyUp'ta tetikle: aksi halde fansub menüsü açılınca, aynı basışın
-                // KeyUp'ı yeni odaklanan menü öğesine düşüp player'ı erkenden açıyordu.
-                if (ev.type == KeyEventType.KeyUp &&
-                    (ev.key == Key.Enter || ev.key == Key.DirectionCenter || ev.key == Key.NumPadEnter)
-                ) {
-                    onPlay(); true
-                } else false
-            }
-            .padding(10.dp),
+            .padding(horizontal = 48.dp, vertical = 5.dp),
     ) {
-        Box(
-            Modifier
-                .width(140.dp)
-                .height(80.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1E1E2A))
+        // Ana tıklanabilir alan (oynat). Sağındaki indir butonu ayrı odak hedefi.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (focused) Color(0xFF1C1C1E) else Color.Transparent)
+                .border(
+                    width = 1.5.dp,
+                    color = if (focused) Color.White.copy(alpha = 0.7f) else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp),
+                )
+                // İlk bölümde YUKARI focus'unu deterministik olarak üst butona yönlendir.
+                // Key-event ile manuel requestFocus güvenilmezdi; focusProperties kesin çalışır.
+                .focusProperties { if (focusUp != null) up = focusUp }
+                .onFocusChanged { focused = it.isFocused }
+                .focusable()
+                .onKeyEvent { ev ->
+                    // KeyUp'ta tetikle: aksi halde fansub menüsü açılınca, aynı basışın
+                    // KeyUp'ı yeni odaklanan menü öğesine düşüp player'ı erkenden açıyordu.
+                    if (ev.type == KeyEventType.KeyUp &&
+                        (ev.key == Key.Enter || ev.key == Key.DirectionCenter || ev.key == Key.NumPadEnter)
+                    ) {
+                        onPlay(); true
+                    } else false
+                }
+                .padding(10.dp),
         ) {
-            if (!episode.poster.isNullOrBlank()) {
-                AsyncImage(
-                    model = episode.poster,
-                    contentDescription = episode.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+            Box(
+                Modifier
+                    .width(140.dp)
+                    .height(80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1E1E2A))
+            ) {
+                if (!episode.poster.isNullOrBlank()) {
+                    AsyncImage(
+                        model = episode.poster,
+                        contentDescription = episode.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                Text(
+                    text = formatNumber(episode.episodeNumber),
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xCC000000))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
                 )
             }
-            Text(
-                text = formatNumber(episode.episodeNumber),
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xCC000000))
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = episode.name,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!episode.description.isNullOrBlank()) {
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = episode.description,
-                    color = Color(0xFFAAAAAA),
-                    fontSize = 12.sp,
-                    maxLines = 2,
+                    text = episode.name,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (!episode.releaseDate.isNullOrBlank()) {
+                    Text(
+                        text = episode.releaseDate,
+                        color = Color(0xFF8A8A8A),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                if (!episode.description.isNullOrBlank()) {
+                    Text(
+                        text = episode.description,
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 12.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+        }
+        Spacer(Modifier.width(8.dp))
+        SaveButton(saved = saved, onClick = onToggleSave)
+    }
+}
+
+/** Bölümü kaydet/indir butonu — durumuna göre ikon/yüzde gösterir. */
+@Composable
+private fun SaveButton(
+    saved: com.alifzys.an1mecix.data.local.SavedStatus?,
+    onClick: () -> Unit,
+) {
+    val label = when (saved?.status) {
+        com.alifzys.an1mecix.data.local.entities.SavedEpisodeEntry.STATUS_COMPLETED -> "✓"
+        com.alifzys.an1mecix.data.local.entities.SavedEpisodeEntry.STATUS_DOWNLOADING -> "%${saved.progress}"
+        com.alifzys.an1mecix.data.local.entities.SavedEpisodeEntry.STATUS_PENDING -> "…"
+        com.alifzys.an1mecix.data.local.entities.SavedEpisodeEntry.STATUS_FAILED -> "⟳"
+        else -> "⬇"
+    }
+    val completed = saved?.status == com.alifzys.an1mecix.data.local.entities.SavedEpisodeEntry.STATUS_COMPLETED
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = if (completed) Color(0xFF1B5E20) else Color(0x22FFFFFF),
+            contentColor = Color.White,
+            focusedContainerColor = Color.White,
+            focusedContentColor = Color.Black,
+        ),
+    ) {
+        Box(
+            Modifier.height(56.dp).width(56.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
         }
     }
 }

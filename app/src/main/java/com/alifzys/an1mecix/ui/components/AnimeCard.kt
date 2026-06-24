@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +40,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.alifzys.an1mecix.domain.model.AnimeCard
-import kotlinx.coroutines.delay
 
 @Composable
 fun PosterCard(
@@ -52,26 +50,16 @@ fun PosterCard(
     height: Dp = 240.dp,
 ) {
     var focused by remember { mutableStateOf(false) }
-    // Animasyon sadece focus üzerinde 80ms durduktan sonra başlar.
-    // Hızlı d-pad scroll'da "popcorn" efekti olmaz.
-    var settled by remember { mutableStateOf(false) }
-    LaunchedEffect(focused) {
-        if (focused) {
-            delay(60)
-            settled = true
-        } else {
-            settled = false
-        }
-    }
-
+    // Gecikme kapısı yok (focus tepkisi anında), ama animasyon daha uzun/yumuşak
+    // sürede oynar → hızlı d-pad gezinmede "kasma/zıplama" hissi azalır.
     val scale by animateFloatAsState(
-        targetValue = if (settled) 1.06f else 1f,
-        animationSpec = tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        targetValue = if (focused) 1.06f else 1f,
+        animationSpec = tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "scale",
     )
     val ringAlpha by animateFloatAsState(
-        targetValue = if (settled) 0.9f else 0f,
-        animationSpec = tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        targetValue = if (focused) 0.9f else 0f,
+        animationSpec = tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "ring",
     )
 
@@ -142,9 +130,9 @@ fun PosterCard(
         }
         Text(
             text = item.name,
-            color = Color.White.copy(alpha = if (settled) 1f else 0.55f),
+            color = Color.White.copy(alpha = if (focused) 1f else 0.55f),
             fontSize = 12.sp,
-            fontWeight = if (settled) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier

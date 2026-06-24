@@ -3,7 +3,9 @@ package com.alifzys.an1mecix.ui.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.alifzys.an1mecix.core.Constants
 import com.alifzys.an1mecix.data.api.TauVideoService
+import com.alifzys.an1mecix.data.download.DownloadManager
 import com.alifzys.an1mecix.data.local.entities.HistoryEntry
 import com.alifzys.an1mecix.data.repository.AnimeRepository
 import com.alifzys.an1mecix.data.repository.UserDataRepository
@@ -13,6 +15,7 @@ import com.alifzys.an1mecix.domain.model.Episode
 import com.alifzys.an1mecix.domain.model.ResolvedStream
 import com.alifzys.an1mecix.domain.model.StreamQuality
 import com.alifzys.an1mecix.domain.model.VideoSource
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,13 +44,82 @@ class PlayerViewModel(
     private val animeRepo: AnimeRepository,
     private val userRepo: UserDataRepository,
     private val tau: TauVideoService,
+    private val downloads: DownloadManager? = null,
+    private val offline: Boolean = false,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     init {
-        load()
+        if (offline) loadOffline() else load()
+    }
+
+    /** İndirilmiş bölümü lokal dosyadan oynat — ağ gerektirmez. */
+    private fun loadOffline() {
+        viewModelScope.launch {
+            _state.value = PlayerUiState.Loading
+            try {
+                val entry = downloads?.get(episodeId)
+                    ?: throw IllegalStateException("Kayıt bulunamadı")
+                val path = entry.filePath?.takeIf { File(it).exists() }
+                    ?: throw IllegalStateException("İndirilen dosya bulunamadı")
+                val episode = Episode(
+                    id = entry.episodeId,
+                    seasonNumber = entry.seasonNumber,
+                    episodeNumber = entry.episodeNumber,
+                    name = entry.episodeName ?: "Bölüm",
+                    poster = entry.episodePoster,
+                    sources = emptyList(),
+                )
+                val detail = AnimeDetail(
+                    id = entry.titleId,
+                    name = entry.titleName,
+                    nameEnglish = null,
+                    description = null,
+                    poster = entry.titlePoster,
+                    backdrop = entry.titleBackdrop,
+                    year = null,
+                    rating = null,
+                    runtime = null,
+                    genres = emptyList(),
+                    isSeries = true,
+                    seriesEnded = false,
+                    nextEpisodeDate = null,
+                    nextEpisodeNumber = null,
+                    trailerUrl = null,
+                    seasons = emptyList(),
+                    currentSeason = entry.seasonNumber,
+                    episodes = listOf(episode),
+                    cast = emptyList(),
+                    related = emptyList(),
+                )
+                val quality = StreamQuality(
+                    label = entry.quality ?: "İndirilen",
+                    url = android.net.Uri.fromFile(File(path)).toString(),
+                    size = entry.fileSize,
+                )
+                val stream = ResolvedStream(
+                    provider = "offline",
+                    qualities = listOf(quality),
+                    referer = null,
+                )
+                val source = VideoSource(
+                    id = entry.sourceId,
+                    name = entry.titleName,
+                    url = entry.sourceUrl,
+                    type = "offline",
+                )
+                val resume = userRepo.progressFor(episode.id)
+                    ?.takeIf { it.progressSec > 30f && it.durationSec > 0 && it.progressSec / it.durationSec < 0.95f }
+                    ?.progressSec
+                _state.value = PlayerUiState.Ready(
+                    detail, episode, stream, resume, quality, emptyList(), listOf(source), source
+                )
+            } catch (e: Exception) {
+                _state.value = PlayerUiState.Error(e.message ?: "Çevrimdışı oynatma hatası")
+            }
+        }
     }
 
     private fun load() {
@@ -59,7 +131,7 @@ class PlayerViewModel(
                 val episode = detail.episodes.firstOrNull { it.id == episodeId }
                     ?: detail.episodes.firstOrNull()
                     ?: throw IllegalStateException("Bölüm bulunamadı")
-                val playable = episode.sources.filter { "tau-video.xyz" in it.url }
+                val playable = episode.sources.filter { Constants.TAU_HOST in it.url }
                 if (playable.isEmpty()) throw IllegalStateException("Oynatılabilir kaynak yok")
                 val source = playable.firstOrNull { it.id == sourceId } ?: playable.first()
                 val stream = tau.resolve(source.url)
@@ -98,7 +170,7 @@ class PlayerViewModel(
 
     fun playEpisode(ep: Episode) {
         viewModelScope.launch {
-            val playable = ep.sources.filter { "tau-video.xyz" in it.url }
+            val playable = ep.sources.filter { Constants.TAU_HOST in it.url }
             val source = playable.firstOrNull() ?: return@launch
             val stream = tau.resolve(source.url)
             val q = stream.qualities.firstOrNull() ?: return@launch
@@ -132,9 +204,14 @@ class PlayerViewModel(
         private val animeRepo: AnimeRepository,
         private val userRepo: UserDataRepository,
         private val tau: TauVideoService,
+        private val downloads: DownloadManager? = null,
+        private val offline: Boolean = false,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PlayerViewModel(titleId, seasonNumber, episodeId, sourceId, animeRepo, userRepo, tau) as T
+            PlayerViewModel(
+                titleId, seasonNumber, episodeId, sourceId,
+                animeRepo, userRepo, tau, downloads, offline,
+            ) as T
     }
 }

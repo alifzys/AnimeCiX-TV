@@ -1,5 +1,6 @@
 package com.alifzys.an1mecix.data.api
 
+import com.alifzys.an1mecix.core.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -39,7 +40,7 @@ class AnimeCixService {
             .joinToString("&")
 
     private fun urlOf(path: String, params: List<Pair<String, Any?>> = emptyList()): String {
-        val base = "${HttpClient.ANIMECIX_BASE}${if (path.startsWith("/")) path else "/$path"}"
+        val base = "${Constants.ANIMECIX_BASE}${if (path.startsWith("/")) path else "/$path"}"
         val q = buildQuery(params)
         return if (q.isEmpty()) base else "$base?$q"
     }
