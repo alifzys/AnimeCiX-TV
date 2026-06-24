@@ -11,6 +11,7 @@ Jetpack Compose for TV ile yazıldı.
 
 <br>
 
+[![Build](https://github.com/alifzys/AnimeCiX-TV/actions/workflows/build.yml/badge.svg)](https://github.com/alifzys/AnimeCiX-TV/actions/workflows/build.yml)
 [![Platform](https://img.shields.io/badge/platform-Android%20TV-3DDC84?logo=android&logoColor=white)](#)
 [![Lisans](https://img.shields.io/badge/lisans-MIT-blue.svg)](LICENSE)
 [![Sürüm](https://img.shields.io/badge/sürüm-1.1.1-orange.svg)](../../releases/latest)
@@ -43,13 +44,33 @@ Jetpack Compose for TV ile yazıldı.
 - ⏩ Oynatma hızı (0.5× – 2×)
 - ⏭️ Opening / Ending **otomatik atlama** + sonraki bölüme **otomatik geçiş**
 - ⏯️ Kaldığın yerden devam (konumu hatırlar)
-- 🪄 **Görüntü iyileştirme** — gerçek zamanlı GL shader: **Keskinlik** ve **Anime4K** (upscale + çizgi netleştirme)
+- 🪄 **Görüntü iyileştirme** *(aşağıda ayrı bölüm)*
 
 🔍 **Arama & Kategoriler** — Ekran üstü klavye, popüler animeler, arama geçmişi ve türlere göre tarama
 
 🔄 **Otomatik güncelleme** — Yeni sürüm çıktığında uygulama açılışta kendini günceller (GitHub Releases üzerinden)
 
 ⚙️ **Ayarlar** — Varsayılan kalite, otomatik atlama, görüntü iyileştirme modu ve daha fazlası
+
+<br>
+
+## 🪄 Görüntü İyileştirme
+
+[Anime4K](https://github.com/bloc97/Anime4K), anime/çizgi içeriği gerçek zamanlı keskinleştiren ve
+yukarı ölçekleyen (upscale) açık kaynak bir shader algoritmasıdır. AnimeCiX TV bunu doğrudan
+oynatma sırasında, GPU üzerinde çalışan bir GL shader hattıyla uygular — düşük çözünürlüklü
+kaynaklar daha net ve canlı görünür.
+
+**Modlar** *(Ayarlar → Görüntü İyileştirme)*:
+
+| Mod | Ne yapar? |
+|-----|-----------|
+| **Kapalı** | İyileştirme yok (en düşük yük). |
+| **Keskinlik** | Hafif, kaynak çözünürlükte keskinleştirme. Çoğu TV'de rahat çalışır. |
+| **Anime4K** | ~1.5× upscale + güçlü keskinleştirme + çizgi belirginleştirme. En iyi görüntü, en yüksek GPU yükü. |
+
+> ⚡ **Performans notu:** Anime4K GPU yoğundur; zayıf/eski TV'lerde takılmaya yol açabilir.
+> Kasma yaşarsan **Keskinlik**'e geç veya kapat. Mod değişikliği için bölümü yeniden açman gerekir.
 
 <br>
 
