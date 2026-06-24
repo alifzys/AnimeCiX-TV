@@ -7,7 +7,7 @@
 
 ## 📍 Şu Anki Durum
 - **Aktif Proje:** `sourcecode/` (yayınlanan uygulama, `com.alifzys.an1mecix` v1.1.2)
-- **Son Tamamlanan:** ✅ **Refaktör planının 3 sırası da bitti** (Constants → mapper/parser → PlayerScreen). Sıra 3 gerçek TV'de **manuel test edildi, sorunsuz**. Ayrıca kullanıcı testinden çıkan **3 bug fix** uygulanıp release APK ile cihaza kuruldu ve doğrulandı.
+- **Son Tamamlanan:** ✅ **Tüm oturum işi commit + push edildi** (2026-06-24). 3 mantıksal commit `origin/main`'e gitti: `fe7f7a4` indirme+izleme listesi, `6a915d6` refaktör+bug fix+testler, `e98e488` docs/CI. origin/main artık `e98e488` (v1.1.2). CI bu push ile çalışmaya başlar, badge yeşillenir. Öncesi: refaktörün 3 sırası da bitti + 3 bug fix gerçek TV'de doğrulandı.
 - **Şu An Üzerinde Çalışılan:** — (planlı iş kalmadı). İsteğe bağlı izleme: DetailScreen/SearchScreen 800 altında ama büyük; "aşağı kaydırma kasması" konusu kullanıcıya göre animasyon yavaşlatılınca düzeldi.
 - **Blokörler:** Yok. `Xeh` saf JVM'de test edilemez → ileride istenirse Robolectric/enstrümante test.
 
@@ -49,7 +49,7 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 - **CHANGELOG.md:** Keep a Changelog formatı. `[Unreleased]` = bu oturumun refaktör+bug fix işleri; `[1.1.1] - 2026-06-04` = ilk public sürüm (git geçmişinden çıkarıldı, tag v1.1.1 auto-update'i içeriyor).
 - **README:** Anime4K tek-satır bullet'ı kaldırıldı → ayrı "🪄 Görüntü İyileştirme" bölümü (Anime4K nedir + Kapalı/Keskinlik/Anime4K modları + performans notu).
 - **GitHub Topics:** kod değil, kullanıcı UI'dan ekleyecek. Önerilen: `android-tv`, `kotlin`, `anime`, `jetpack-compose`, `exoplayer`, `media3`, `google-tv`, `compose-for-tv`, `anime4k`.
-- Not: bu dosyalar + bu oturumun tüm refaktörü henüz git'e commit'lenmedi (origin/main hâlâ v1.1.1 @ 9d52059).
+- ✅ **2026-06-24: Hepsi commit + push edildi** — origin/main `9d52059` → `e98e488`. 3 commit: `fe7f7a4` (indirme+izleme listesi feature; meğer hiç commit'lenmemiş ama CHANGELOG'da 1.1.1 özelliği olarak yazılıydı), `6a915d6` (refaktör+bug fix+test), `e98e488` (docs/CI). _archive/ git deposunun (sourcecode/) DIŞINDA olduğu için push'a dahil değil — doğru.
 
 ### 2026-06-23 — Depo temizliği (dead code taraması + arşivleme)
 - **Dead code taraması:** `sourcecode/` temiz çıktı — 0 dead top-level/private sembol, 0 TODO/FIXME, yorumlanmış kod bloğu yok, orphan dosya yok. **Silinen bir şey olmadı.**
