@@ -51,13 +51,6 @@ import com.alifzys.an1mecix.domain.model.VideoSource
 import com.alifzys.an1mecix.ui.components.FullScreenLoading
 import kotlinx.coroutines.delay
 
-private val SHOW_KEYS = setOf(
-    AKeyEvent.KEYCODE_DPAD_LEFT, AKeyEvent.KEYCODE_DPAD_RIGHT,
-    AKeyEvent.KEYCODE_DPAD_UP, AKeyEvent.KEYCODE_DPAD_DOWN,
-    AKeyEvent.KEYCODE_DPAD_CENTER, AKeyEvent.KEYCODE_ENTER,
-    AKeyEvent.KEYCODE_NUMPAD_ENTER, AKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-)
-
 // Opening atlama artık tau /most-sought markörlerinden gelir (gerçek intro from/to).
 // Ending için markör yoksa "bitişe kalan sn" sezgisel geçişi devreye girer.
 private const val ENDING_SHOW_MIN = 4L         // bitişe kalan sn alt sınır
@@ -201,10 +194,38 @@ private fun PlayerContent(
     var settingsOpen by remember { mutableStateOf(false) }
     var speedSheetOpen by remember { mutableStateOf(false) }
     var fansubSheetOpen by remember { mutableStateOf(false) }
+    var subtitleSheetOpen by remember { mutableStateOf(false) }
     var currentSpeed by remember { mutableFloatStateOf(1f) }
     val playFocus = remember { FocusRequester() }
     val barFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
+
+    // Altyazı: varsa Türkçe, yoksa ilk parça varsayılan (buildMediaItem ile aynı seçim).
+    val defaultSubtitle = remember(state.stream.subtitles) {
+        state.stream.subtitles.firstOrNull { it.language?.lowercase()?.startsWith("tr") == true }
+            ?: state.stream.subtitles.firstOrNull()
+    }
+    var currentSubtitle by remember(state.stream.subtitles) { mutableStateOf(defaultSubtitle) }
+
+    // OK/Center: oynat-duraklat. Duraklatınca kontrolleri göster, oynatınca gizle.
+    fun togglePlayback() {
+        val wasPlaying = exoPlayer.playWhenReady
+        exoPlayer.playWhenReady = !wasPlaying
+        controlsVisible = wasPlaying
+    }
+
+    // Altyazı seçimi — videoyu yeniden yüklemeden metin parçasını aç/kapat/değiştir.
+    fun applySubtitle(sub: Subtitle?) {
+        currentSubtitle = sub
+        val p = exoPlayer.trackSelectionParameters.buildUpon()
+        if (sub == null) {
+            p.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+        } else {
+            p.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            sub.language?.let { lang -> p.setPreferredTextLanguage(lang) }
+        }
+        exoPlayer.trackSelectionParameters = p.build()
+    }
 
     // ── Opening / Ending atlama (ayarlardan) ───────────────────────────────
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
@@ -232,10 +253,11 @@ private fun PlayerContent(
     val endingActive = skipEndingOn && !endingHandled && nextEp != null &&
         (endingByMarker || endingByHeuristic)
     val skipActive = openingActive || endingActive
-    val anySheetOpen = settingsOpen || speedSheetOpen || fansubSheetOpen
+    val anySheetOpen = settingsOpen || speedSheetOpen || fansubSheetOpen || subtitleSheetOpen
 
-    LaunchedEffect(controlsVisible, anySheetOpen, skipActive) {
-        if (controlsVisible && !anySheetOpen && !skipActive) {
+    // Otomatik gizleme yalnızca OYNARKEN; duraklatıldığında kontroller kalsın.
+    LaunchedEffect(controlsVisible, anySheetOpen, skipActive, isPlaying) {
+        if (controlsVisible && isPlaying && !anySheetOpen && !skipActive) {
             delay(4_000)
             controlsVisible = false
         }
@@ -251,12 +273,13 @@ private fun PlayerContent(
 
     BackHandler {
         when {
-            settingsOpen    -> { settingsOpen = false; controlsVisible = true }
-            speedSheetOpen  -> { speedSheetOpen = false; controlsVisible = true }
-            fansubSheetOpen -> { fansubSheetOpen = false; controlsVisible = true }
-            openingActive   -> openingHandled = true
-            endingActive    -> endingHandled = true
-            controlsVisible -> controlsVisible = false
+            settingsOpen     -> { settingsOpen = false; controlsVisible = true }
+            speedSheetOpen   -> { speedSheetOpen = false; controlsVisible = true }
+            fansubSheetOpen  -> { fansubSheetOpen = false; controlsVisible = true }
+            subtitleSheetOpen -> { subtitleSheetOpen = false; controlsVisible = true }
+            openingActive    -> openingHandled = true
+            endingActive     -> endingHandled = true
+            controlsVisible  -> controlsVisible = false
             else -> onBack()
         }
     }
@@ -266,14 +289,17 @@ private fun PlayerContent(
             .fillMaxSize()
             .focusRequester(rootFocus)
             .focusable(enabled = !anySheetOpen && !skipActive)
-            // Kontroller gizliyken herhangi bir tuşa basılınca göster.
+            // Kontroller gizliyken tuş davranışı:
+            //  OK/Center → oynat-duraklat (+ duraklayınca kontroller gelir)
+            //  YUKARI    → sadece kontrolleri göster (duraklatmadan)
+            //  SOL/SAĞ   → doğrudan ±10 sn sar (+ kontroller gelir)
+            //  AŞAĞI     → hiçbir şey (kullanıcı: aşağı = gizle)
             // Kontroller açıkken yön tuşlarını YUTMUYORUZ → TV focus traversal çalışsın.
             .onKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onKeyEvent false
                 val kc = ev.nativeKeyEvent.keyCode
                 if (!controlsVisible) {
                     when (kc) {
-                        // Kontroller kapalıyken sağ/sol → doğrudan sar (+ kontrolleri göster).
                         AKeyEvent.KEYCODE_DPAD_LEFT -> {
                             exoPlayer.seekTo((exoPlayer.currentPosition - SEEK_STEP_MS).coerceAtLeast(0))
                             controlsVisible = true
@@ -286,9 +312,16 @@ private fun PlayerContent(
                             controlsVisible = true
                             return@onKeyEvent true
                         }
-                        in SHOW_KEYS -> {
+                        AKeyEvent.KEYCODE_DPAD_CENTER,
+                        AKeyEvent.KEYCODE_ENTER,
+                        AKeyEvent.KEYCODE_NUMPAD_ENTER,
+                        AKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                            togglePlayback()
+                            return@onKeyEvent true
+                        }
+                        AKeyEvent.KEYCODE_DPAD_UP -> {
                             controlsVisible = true
-                            return@onKeyEvent true  // bir defalık tüket
+                            return@onKeyEvent true
                         }
                     }
                 }
@@ -326,17 +359,20 @@ private fun PlayerContent(
                 currentSpeed = currentSpeed,
                 fansubLabel = state.currentSource.shortFansubLabel(),
                 hasMultipleSources = state.sources.size > 1,
+                hasSubtitles = state.stream.subtitles.isNotEmpty(),
+                subtitleLabel = currentSubtitle?.let { it.language?.uppercase() ?: "Açık" } ?: "Kapalı",
                 prevEp = prevEp,
                 nextEp = nextEp,
                 playFocus = playFocus,
                 barFocus = barFocus,
                 onSeekBack = { exoPlayer.seekTo((positionMs - SEEK_STEP_MS).coerceAtLeast(0)) },
                 onSeekFwd = { exoPlayer.seekTo((positionMs + SEEK_STEP_MS).coerceAtMost(durationMs)) },
-                onTogglePlay = { exoPlayer.playWhenReady = !exoPlayer.playWhenReady },
+                onTogglePlay = { togglePlayback() },
                 onHideControls = { controlsVisible = false },
                 onOpenSettings = { settingsOpen = true },
                 onOpenSpeed = { speedSheetOpen = true },
                 onOpenFansub = { fansubSheetOpen = true },
+                onOpenSubtitle = { subtitleSheetOpen = true },
                 onPlayEpisode = onPlayEpisode,
             )
         }
@@ -373,6 +409,16 @@ private fun PlayerContent(
                 current = state.currentSource,
                 onSelect = { src -> onSelectSource(src); fansubSheetOpen = false },
                 onDismiss = { fansubSheetOpen = false },
+            )
+        }
+
+        // Altyazı seçici
+        if (subtitleSheetOpen) {
+            SubtitleSheet(
+                subtitles = state.stream.subtitles,
+                current = currentSubtitle,
+                onSelect = { sub -> applySubtitle(sub); subtitleSheetOpen = false },
+                onDismiss = { subtitleSheetOpen = false },
             )
         }
 

@@ -29,6 +29,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.alifzys.an1mecix.domain.model.StreamQuality
+import com.alifzys.an1mecix.domain.model.Subtitle
 import com.alifzys.an1mecix.domain.model.VideoSource
 
 // ---------- Kalite seçici ----------
@@ -169,6 +170,80 @@ internal fun SpeedSheet(
                         text = if (selected) "● $label" else label,
                         fontSize = 17.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 15.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------- Altyazı seçici ----------
+
+/** Altyazı seçim sheet'i — "Kapalı" + mevcut altyazılar. null seçim = kapalı. */
+@Composable
+internal fun SubtitleSheet(
+    subtitles: List<Subtitle>,
+    current: Subtitle?,
+    onSelect: (Subtitle?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
+
+    // "Kapalı" (null) + altyazılar tek listede.
+    val options: List<Subtitle?> = remember(subtitles) { listOf(null) + subtitles }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xBB000000))
+            .onKeyEvent { ev ->
+                if (ev.type == KeyEventType.KeyDown &&
+                    ev.nativeKeyEvent.keyCode == AKeyEvent.KEYCODE_BACK
+                ) { onDismiss(); true } else false
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .width(460.dp)
+                .background(Color(0xFF15151E), RoundedCornerShape(18.dp))
+                .padding(horizontal = 28.dp, vertical = 26.dp)
+                .focusGroup(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Altyazı Seç",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 20.dp),
+            )
+            options.forEachIndexed { idx, sub ->
+                val selected = sub?.url == current?.url
+                val label = sub?.label ?: "Kapalı"
+                val mod = if (idx == 0)
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp).focusRequester(firstFocus)
+                else
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp)
+                Surface(
+                    onClick = { onSelect(sub) },
+                    modifier = mod,
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = if (selected) Color(0xFFE53935) else Color(0x22FFFFFF),
+                        contentColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black,
+                    ),
+                ) {
+                    Text(
+                        text = if (selected) "● $label" else label,
+                        fontSize = 17.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 15.dp),
                     )
                 }

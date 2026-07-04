@@ -7,6 +7,15 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-07-05
+
+### Düzeltildi
+- **Yapay çeviri altyazıları hâlâ gelmiyordu** → tau-video embed adresindeki `vid` parametresi API'ye iletilmiyordu; altyazılar (soft-sub) yalnızca bu parametreyle döndüğü için hiç gelmiyordu. Artık iletiliyor.
+
+### Eklendi
+- **Altyazı seçici:** oynatıcıda altyazı dilini seçme / kapatma (yapay çeviri dâhil).
+- **Oynatıcı kontrolleri elden geçirildi:** OK artık videoyu duraklatır ve kontrolleri getirir (tekrar OK → devam + gizle); YUKARI kontrolleri gösterir, AŞAĞI gizler. Buton satırı ilerleme çubuğunun üstüne alındı.
+
 ## [1.1.4] - 2026-07-04
 
 ### Düzeltildi
@@ -51,7 +60,8 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.4...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.5...HEAD
+[1.1.5]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.5
 [1.1.4]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.4
 [1.1.3]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.3
 [1.1.1]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.1

@@ -27,6 +27,9 @@ class TauVideoService {
     private val http = HttpClient.okHttp
 
     private val embedRe = Regex("""tau-video\.xyz/embed/([A-Za-z0-9]+)""")
+    // animecix embed URL'i çoğu zaman "?vid=..." taşır; tau API'si altyazıları (subs)
+    // yalnızca bu vid ile döndürür. vid düşerse soft-sub altyazı GELMEZ.
+    private val vidParamRe = Regex("""[?&]vid=([A-Za-z0-9]+)""")
     private val referer = Constants.TAU_BASE
 
     // tau player HMAC anahtarı — sitenin kendi JS'inde açık (gizli değil), most-sought imzası için.
@@ -34,11 +37,13 @@ class TauVideoService {
         ("t4u" + "_pl4y3r_" + "s3cr3t_k3y").toByteArray(Charsets.UTF_8)
 
     suspend fun resolve(embedUrl: String): ResolvedStream = withContext(Dispatchers.IO) {
-        val vid = embedRe.find(embedUrl)?.groupValues?.getOrNull(1)
+        val embedId = embedRe.find(embedUrl)?.groupValues?.getOrNull(1)
             ?: throw IllegalArgumentException("tau-video ID bulunamadı: $embedUrl")
+        val vidParam = vidParamRe.find(embedUrl)?.groupValues?.getOrNull(1)
+        val apiUrl = "${Constants.TAU_API}$embedId" + (vidParam?.let { "?vid=$it" } ?: "")
 
         val req = Request.Builder()
-            .url("${Constants.TAU_API}$vid")
+            .url(apiUrl)
             .header("Referer", referer)
             .header("Origin", referer.trimEnd('/'))
             .build()

@@ -2,6 +2,7 @@ package com.alifzys.an1mecix.ui.player
 
 import android.view.KeyEvent as AKeyEvent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,8 @@ internal fun PlayerOverlay(
     currentSpeed: Float,
     fansubLabel: String,
     hasMultipleSources: Boolean,
+    hasSubtitles: Boolean,
+    subtitleLabel: String,
     prevEp: Episode?,
     nextEp: Episode?,
     playFocus: FocusRequester,
@@ -73,6 +76,7 @@ internal fun PlayerOverlay(
     onOpenSettings: () -> Unit,
     onOpenSpeed: () -> Unit,
     onOpenFansub: () -> Unit,
+    onOpenSubtitle: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
 ) {
     val pct = androidx.compose.runtime.remember {
@@ -136,25 +140,17 @@ internal fun PlayerOverlay(
         }
 
         // ── Alt kontrol çubuğu ────────────────────────────────────
+        // Düzen: buton satırı ÜSTTE, ilerleme çubuğu EN ALTTA. Böylece çubuktan
+        // YUKARI → butonlar, çubuktan AŞAĞI → kontrolleri gizle çalışır.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .padding(start = 40.dp, end = 40.dp, bottom = 20.dp),
         ) {
-            ProgressBar(
-                pct = pct.value,
-                barFocus = barFocus,
-                onSeekBack = onSeekBack,
-                onSeekFwd = onSeekFwd,
-                onOk = onHideControls,
-            )
-
-            Spacer(Modifier.height(12.dp))
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusGroup(),
             ) {
                 SmallPlayBtn(
                     isPlaying = isPlaying(),
@@ -180,6 +176,11 @@ internal fun PlayerOverlay(
                 }
                 CtrlPill(text = speedLabel, onClick = onOpenSpeed)
 
+                if (hasSubtitles) {
+                    Spacer(Modifier.width(6.dp))
+                    CtrlPill(text = "⌨ $subtitleLabel", onClick = onOpenSubtitle)
+                }
+
                 if (hasMultipleSources) {
                     Spacer(Modifier.width(6.dp))
                     CtrlPill(text = "⚑ $fansubLabel", onClick = onOpenFansub)
@@ -202,6 +203,17 @@ internal fun PlayerOverlay(
                     )
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            ProgressBar(
+                pct = pct.value,
+                barFocus = barFocus,
+                onSeekBack = onSeekBack,
+                onSeekFwd = onSeekFwd,
+                onTogglePlay = onTogglePlay,
+                onHideControls = onHideControls,
+            )
         }
     }
 }
@@ -274,10 +286,12 @@ private fun ProgressBar(
     barFocus: FocusRequester,
     onSeekBack: () -> Unit,
     onSeekFwd: () -> Unit,
-    onOk: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onHideControls: () -> Unit,
 ) {
     // Birincil oynatıcı odağı: kontroller açılınca buraya odaklanılır.
-    // SOL/SAĞ → ileri-geri sarma, OK → kontrolleri gizle. AŞAĞI → buton satırı.
+    // SOL/SAĞ → ileri-geri sarma, OK → oynat/duraklat, AŞAĞI → kontrolleri gizle,
+    // YUKARI → üstteki buton satırına geç (doğal odak akışı).
     var focused by remember { mutableStateOf(false) }
     val barH = if (focused) 4.dp else 2.dp
     val dotSize = if (focused) 16.dp else 10.dp
@@ -296,7 +310,8 @@ private fun ProgressBar(
                     AKeyEvent.KEYCODE_DPAD_RIGHT -> { onSeekFwd();  true }
                     AKeyEvent.KEYCODE_DPAD_CENTER,
                     AKeyEvent.KEYCODE_ENTER,
-                    AKeyEvent.KEYCODE_NUMPAD_ENTER -> { onOk(); true }
+                    AKeyEvent.KEYCODE_NUMPAD_ENTER -> { onTogglePlay(); true }
+                    AKeyEvent.KEYCODE_DPAD_DOWN -> { onHideControls(); true }
                     else -> false
                 }
             },
