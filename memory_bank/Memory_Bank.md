@@ -43,6 +43,12 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
+### 2026-07-05 — Altyazı vid fix + altyazı seçici + kontrol şeması (v1.1.5)
+- **🔑 ALTYAZI KÖK NEDEN (önemli):** tau embed url'i `https://tau-video.xyz/embed/{id}?vid={vid}` biçiminde; tau `/api/video/{id}` **`vid` olmadan `subs: null`**, **`vid` ile `subs: []`/dolu** döndürür. `TauVideoService` regex'i `vid`'i düşürüyordu → soft-sub altyazı HİÇ gelmiyordu. Fix: `vidParamRe` ile vid çıkarılıp `/api/video/{id}?vid=...` çağrılıyor. (~1500 video tarandı, hepsi hardsub fansub/`type:embed`; canlı AI-sub örneği yakalanamadı ama vid'in null→[] etkisi kanıtlandı. **Görüntü doğrulaması kullanıcının gerçek yapay-çeviri animesinde yapılacak; hâlâ gelmezse anime adı alınıp `/vtt/{subid}` formatı kontrol edilecek.**) ExoPlayer .ass desteklemez → `/vtt/{id}` WebVTT kullanılıyor.
+- **Altyazı seçici:** `SubtitleSheet` (Kapalı + diller) + oynatıcı pill'i. `applySubtitle` → `trackSelectionParameters` (`setTrackTypeDisabled`/`setPreferredTextLanguage`), videoyu yeniden yüklemez.
+- **Kontrol şeması:** OK = oynat/duraklat (duraklatınca kontroller gelir, oynatınca gizlenir); YUKARI göster, AŞAĞI (progress bar'dan) gizle. Buton satırı progress bar'ın ÜSTÜNE alındı (yukarı=butonlar, aşağı=gizle akışı için). Auto-hide yalnızca oynarken.
+- Yayınlandı: commit `c3f221b`, tag `v1.1.5`, Release+3 APK.
+
 ### 2026-07-04 — Otomatik güncelleme düzeltmesi (v1.1.4)
 Cihaz testinde iki updater bug'ı: (1) indirme/kurulum ekranı arka planı bloke etmiyordu (D-pad arkada geziniyordu), (2) "Kuruluyor…"da asılı kalıyordu.
 - **Kök neden ②:** `PackageInstaller.commit()` sonrası sistem `STATUS_PENDING_USER_ACTION` callback'i gönderir; sistemin "güncelle?" onay ekranını (`EXTRA_INTENT`) **uygulama** başlatmalı. `MainActivity` bu intent'i hiç işlemiyordu → asılı. Artık `onCreate`+`onNewIntent`'te `handleInstallResult` var; `singleTop` sayesinde mevcut instance'a düşüyor. `UpdateService.INSTALL_ACTION` sabiti + `installStatusListener` (hata/iptalde overlay'i açar).
