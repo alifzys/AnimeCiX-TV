@@ -225,7 +225,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             SectionLabel("UYGULAMA")
             Spacer(Modifier.height(12.dp))
 
-            InfoRow(title = "Sürüm", value = "1.1.3")
+            InfoRow(title = "Sürüm", value = "1.1.4")
             Spacer(Modifier.height(8.dp))
             InfoRow(title = "Geliştirici", value = "Alifzys")
             Spacer(Modifier.height(8.dp))

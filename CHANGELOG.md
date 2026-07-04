@@ -7,6 +7,12 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-07-04
+
+### Düzeltildi
+- **Otomatik güncelleme "Kuruluyor…"da takılıyordu** → indirmeden sonra sistemin kurulum onay ekranı artık düzgün açılıyor (PackageInstaller `STATUS_PENDING_USER_ACTION` işleniyor).
+- **Güncelleme ekranı arkadaki menüyü bloke etmiyordu** → indirme/kurulum sırasında ekran tam bloke edilir; D-pad ve dokunma arkaya geçmez.
+
 ## [1.1.3] - 2026-07-04
 
 ### Eklendi
@@ -45,6 +51,7 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.4...HEAD
+[1.1.4]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.4
 [1.1.3]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.3
 [1.1.1]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.1

@@ -49,6 +49,16 @@ private data class GithubAsset(
 object UpdateService {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** PackageInstaller callback intent action'ı (install() ve MainActivity aynı değeri kullanır). */
+    const val INSTALL_ACTION = "com.alifzys.an1mecix.INSTALL_RESULT"
+
+    /**
+     * Kurulum sonucu dinleyicisi (PackageInstaller.STATUS_*). MainActivity intent'ten iletir;
+     * UpdateOverlay hata/iptal durumunda bloklamayı kaldırmak için dinler.
+     */
+    @Volatile
+    var installStatusListener: ((Int) -> Unit)? = null
+
     /** Yeni sürüm varsa UpdateInfo, yoksa null döner. Hata olursa sessizce null. */
     suspend fun check(): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
@@ -123,7 +133,7 @@ object UpdateService {
                 session.fsync(out)
             }
             val intent = Intent(context, Class.forName("com.alifzys.an1mecix.MainActivity"))
-                .setAction("com.alifzys.an1mecix.INSTALL_RESULT")
+                .setAction(INSTALL_ACTION)
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
             val pi = PendingIntent.getActivity(context, sessionId, intent, flags)
