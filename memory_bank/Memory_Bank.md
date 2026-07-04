@@ -43,7 +43,12 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
-### 2026-07-05 — Altyazı vid fix + altyazı seçici + kontrol şeması (v1.1.5)
+### 2026-07-05 — Yapay çeviri altyazı GERÇEK fix (v1.1.6)
+- **Kök neden:** `vid` embed url'inde GELMİYOR — **animecix video id'sinin (`VideoSource.id`) ta kendisi.** Site `?vid={video.id}` ekliyor. v1.1.5'in "url'den vid çıkar" yaklaşımı boşa gidiyordu (url'de vid yok). Fix: `resolve(embedUrl, vid=source.id)`; PlayerViewModel x3 + DownloadManager `source.id`/`entry.sourceId` geçiriyor.
+- **Uçtan uca doğrulandı** (gerçek kullanıcı örneği): *Hyouken no Majutsushi* S1B2, video id/vid=662548 → `/api/video?vid=662548` subs dolu (sub id 2710, tr, `.ass`) → `/vtt/2710` geçerli WebVTT (200, her referer). Ayrıntı: [[tau-vid-subs]].
+- Yayınlandı: commit `c8fe88e`, tag `v1.1.6`, Release+3 APK.
+
+### 2026-07-05 — Altyazı vid fix (YETERSİZ) + altyazı seçici + kontrol şeması (v1.1.5)
 - **🔑 ALTYAZI KÖK NEDEN (önemli):** tau embed url'i `https://tau-video.xyz/embed/{id}?vid={vid}` biçiminde; tau `/api/video/{id}` **`vid` olmadan `subs: null`**, **`vid` ile `subs: []`/dolu** döndürür. `TauVideoService` regex'i `vid`'i düşürüyordu → soft-sub altyazı HİÇ gelmiyordu. Fix: `vidParamRe` ile vid çıkarılıp `/api/video/{id}?vid=...` çağrılıyor. (~1500 video tarandı, hepsi hardsub fansub/`type:embed`; canlı AI-sub örneği yakalanamadı ama vid'in null→[] etkisi kanıtlandı. **Görüntü doğrulaması kullanıcının gerçek yapay-çeviri animesinde yapılacak; hâlâ gelmezse anime adı alınıp `/vtt/{subid}` formatı kontrol edilecek.**) ExoPlayer .ass desteklemez → `/vtt/{id}` WebVTT kullanılıyor.
 - **Altyazı seçici:** `SubtitleSheet` (Kapalı + diller) + oynatıcı pill'i. `applySubtitle` → `trackSelectionParameters` (`setTrackTypeDisabled`/`setPreferredTextLanguage`), videoyu yeniden yüklemez.
 - **Kontrol şeması:** OK = oynat/duraklat (duraklatınca kontroller gelir, oynatınca gizlenir); YUKARI göster, AŞAĞI (progress bar'dan) gizle. Buton satırı progress bar'ın ÜSTÜNE alındı (yukarı=butonlar, aşağı=gizle akışı için). Auto-hide yalnızca oynarken.
