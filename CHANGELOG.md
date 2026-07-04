@@ -7,6 +7,11 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-07-05
+
+### Düzeltildi
+- **Yapay çeviri altyazıları artık geliyor (gerçek düzeltme).** tau'nun altyazı için istediği `vid`, embed adresinde değil animecix **video id'sinin** kendisiymiş; artık video id'si `?vid=` olarak API'ye iletiliyor. Gerçek bir bölümle uçtan uca doğrulandı (subs geliyor → `/vtt/` geçerli WebVTT). 1.1.5'teki "adresten vid çıkar" yaklaşımı bu yüzden yetersizdi.
+
 ## [1.1.5] - 2026-07-05
 
 ### Düzeltildi
@@ -60,7 +65,8 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.5...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.6...HEAD
+[1.1.6]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.6
 [1.1.5]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.5
 [1.1.4]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.4
 [1.1.3]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.3

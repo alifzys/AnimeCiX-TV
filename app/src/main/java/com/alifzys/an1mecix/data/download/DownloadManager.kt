@@ -117,8 +117,8 @@ class DownloadManager(
         dao.updateProgress(episodeId, SavedEpisodeEntry.STATUS_DOWNLOADING, 0)
         val outFile = File(downloadsDir(), "$episodeId.mp4")
         try {
-            // tau embed → mp4 kaliteleri; en yükseği indir
-            val stream = tau.resolve(entry.sourceUrl)
+            // tau embed → mp4 kaliteleri + soft-sub; vid = animecix video id (sourceId).
+            val stream = tau.resolve(entry.sourceUrl, entry.sourceId)
             val quality = stream.qualities.firstOrNull()
                 ?: throw IllegalStateException("İndirilebilir kalite yok")
 

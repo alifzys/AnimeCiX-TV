@@ -14,7 +14,7 @@ Jetpack Compose for TV ile yazıldı.
 [![Build](https://github.com/alifzys/AnimeCiX-TV/actions/workflows/build.yml/badge.svg)](https://github.com/alifzys/AnimeCiX-TV/actions/workflows/build.yml)
 [![Platform](https://img.shields.io/badge/platform-Android%20TV-3DDC84?logo=android&logoColor=white)](#)
 [![Lisans](https://img.shields.io/badge/lisans-MIT-blue.svg)](LICENSE)
-[![Sürüm](https://img.shields.io/badge/sürüm-1.1.5-orange.svg)](../../releases/latest)
+[![Sürüm](https://img.shields.io/badge/sürüm-1.1.6-orange.svg)](../../releases/latest)
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](#)
 
 [**⬇️ İndir**](#-i̇ndir--kur) · [**✨ Özellikler**](#-özellikler) · [**🛠️ Derle**](#️-kaynaktan-derleme-geliştiriciler)

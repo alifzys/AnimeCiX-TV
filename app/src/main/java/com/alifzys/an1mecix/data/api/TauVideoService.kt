@@ -27,8 +27,9 @@ class TauVideoService {
     private val http = HttpClient.okHttp
 
     private val embedRe = Regex("""tau-video\.xyz/embed/([A-Za-z0-9]+)""")
-    // animecix embed URL'i çoğu zaman "?vid=..." taşır; tau API'si altyazıları (subs)
-    // yalnızca bu vid ile döndürür. vid düşerse soft-sub altyazı GELMEZ.
+    // tau API'si soft-sub altyazıları (subs) yalnızca "?vid=..." ile döndürür (vid'siz null).
+    // ÖNEMLİ: vid, embed URL'inde GELMEZ — animecix video id'sinin (VideoSource.id) ta kendisidir.
+    // Site embed URL'ini "?vid={video.id}" diye kurar. Yedek olarak url'de varsa oradan da alınır.
     private val vidParamRe = Regex("""[?&]vid=([A-Za-z0-9]+)""")
     private val referer = Constants.TAU_BASE
 
@@ -36,11 +37,13 @@ class TauVideoService {
     private val playerSigKey =
         ("t4u" + "_pl4y3r_" + "s3cr3t_k3y").toByteArray(Charsets.UTF_8)
 
-    suspend fun resolve(embedUrl: String): ResolvedStream = withContext(Dispatchers.IO) {
+    /** [vid] = animecix video id (VideoSource.id). Soft-sub altyazılar bununla gelir. */
+    suspend fun resolve(embedUrl: String, vid: Int? = null): ResolvedStream = withContext(Dispatchers.IO) {
         val embedId = embedRe.find(embedUrl)?.groupValues?.getOrNull(1)
             ?: throw IllegalArgumentException("tau-video ID bulunamadı: $embedUrl")
-        val vidParam = vidParamRe.find(embedUrl)?.groupValues?.getOrNull(1)
-        val apiUrl = "${Constants.TAU_API}$embedId" + (vidParam?.let { "?vid=$it" } ?: "")
+        val vidValue = vid?.takeIf { it > 0 }?.toString()
+            ?: vidParamRe.find(embedUrl)?.groupValues?.getOrNull(1)
+        val apiUrl = "${Constants.TAU_API}$embedId" + (vidValue?.let { "?vid=$it" } ?: "")
 
         val req = Request.Builder()
             .url(apiUrl)

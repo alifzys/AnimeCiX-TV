@@ -148,7 +148,7 @@ class PlayerViewModel(
                 val playable = episode.sources.filter { Constants.TAU_HOST in it.url }
                 if (playable.isEmpty()) throw IllegalStateException("Oynatılabilir kaynak yok")
                 val source = playable.firstOrNull { it.id == sourceId } ?: playable.first()
-                val stream = tau.resolve(source.url)
+                val stream = tau.resolve(source.url, source.id)
                 val resume = userRepo.progressFor(episode.id)
                     ?.takeIf { it.progressSec > 30f && it.durationSec > 0 && it.progressSec / it.durationSec < 0.95f }
                     ?.progressSec
@@ -175,7 +175,7 @@ class PlayerViewModel(
         if (source.id == cur.currentSource.id) return
         viewModelScope.launch {
             try {
-                val stream = tau.resolve(source.url)
+                val stream = tau.resolve(source.url, source.id)
                 val q = stream.qualities.firstOrNull() ?: return@launch
                 _state.value = cur.copy(stream = stream, currentSource = source, currentQuality = q)
             } catch (_: Exception) { /* mevcut kaynakta kal */ }
@@ -186,7 +186,7 @@ class PlayerViewModel(
         viewModelScope.launch {
             val playable = ep.sources.filter { Constants.TAU_HOST in it.url }
             val source = playable.firstOrNull() ?: return@launch
-            val stream = tau.resolve(source.url)
+            val stream = tau.resolve(source.url, source.id)
             val q = stream.qualities.firstOrNull() ?: return@launch
             val cur = _state.value as? PlayerUiState.Ready ?: return@launch
             val resume = userRepo.progressFor(ep.id)
