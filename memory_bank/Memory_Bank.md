@@ -43,6 +43,13 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
+### 2026-07-04 — Otomatik güncelleme düzeltmesi (v1.1.4)
+Cihaz testinde iki updater bug'ı: (1) indirme/kurulum ekranı arka planı bloke etmiyordu (D-pad arkada geziniyordu), (2) "Kuruluyor…"da asılı kalıyordu.
+- **Kök neden ②:** `PackageInstaller.commit()` sonrası sistem `STATUS_PENDING_USER_ACTION` callback'i gönderir; sistemin "güncelle?" onay ekranını (`EXTRA_INTENT`) **uygulama** başlatmalı. `MainActivity` bu intent'i hiç işlemiyordu → asılı. Artık `onCreate`+`onNewIntent`'te `handleInstallResult` var; `singleTop` sayesinde mevcut instance'a düşüyor. `UpdateService.INSTALL_ACTION` sabiti + `installStatusListener` (hata/iptalde overlay'i açar).
+- **Kök neden ①:** `UpdateOverlay` sadece scrim çiziyordu; odak/tuş yakalamıyordu. Artık `BlockingModal`: `focusRequester`+`focusable`, BACK dışı tüm tuşları yutan `onKeyEvent`, dokunmayı yutan `pointerInput`. İndirme sırasında BACK yutulur; kurulum aşamasında BACK ile kapatılabilir (takılma önlemi).
+- **⚠️ Dağıtım tuzağı:** Düzeltme updater'ın KENDİSİNDE → cihazdaki eski build hâlâ bozuk akışı çalıştırır. Kullanıcı **1.1.4'e bir kez elle (sideload) geçmeli**; sonrası otomatik. Release notuna da yazıldı.
+- Yayınlandı: commit `b3ad139`, tag `v1.1.4`, Release+3 APK. `/releases/latest`=v1.1.4.
+
 ### 2026-07-04 — Altyazı + gerçek opening/ending + player D-pad + Anime4K ölçek
 Cihaz testinden 2 büyük + 3 küçük iş. **assembleRelease ✅, 31 test ✅** (kullanıcı cihaz testini kendi yapacak).
 - **① Soft-sub altyazı (BÜYÜK):** Kök neden → `TauVideoDto` `subs` alanını hiç parse etmiyordu, app altyazıyı hiç iliştirmiyordu. Tau `/api/video/` yanıtındaki `subs:[{id,language,name,url}]` artık okunuyor; `url` ham `.ass` (ExoPlayer desteklemez) yerine **`/vtt/{id}` WebVTT** kullanılıyor. `ResolvedStream.subtitles` eklendi; `PlayerScreen.buildMediaItem` `MediaItem.SubtitleConfiguration` (MIME text/vtt, tr varsa DEFAULT) bağlıyor → PlayerView otomatik gösteriyor. Streaming sub, video ile aynı `DefaultHttpDataSource` (tau Referer) üzerinden yükleniyor.
