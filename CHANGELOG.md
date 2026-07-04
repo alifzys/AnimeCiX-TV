@@ -7,6 +7,11 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-07-05
+
+### Eklendi
+- **Altyazı boyutu ayarı** (Ayarlar → Altyazı): Küçük / Orta / Büyük / Çok Büyük. Altyazılar okunurluk için siyah konturlu gösterilir.
+
 ## [1.1.6] - 2026-07-05
 
 ### Düzeltildi
@@ -65,7 +70,8 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.6...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.7...HEAD
+[1.1.7]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.7
 [1.1.6]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.6
 [1.1.5]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.5
 [1.1.4]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.4

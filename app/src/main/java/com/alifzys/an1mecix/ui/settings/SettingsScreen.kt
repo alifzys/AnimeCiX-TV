@@ -62,6 +62,16 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
     }
+    var subtitleSize by remember {
+        mutableStateOf(
+            when (prefs.getInt("subtitle_size", 1)) {
+                0 -> "Küçük"
+                2 -> "Büyük"
+                3 -> "Çok Büyük"
+                else -> "Orta"
+            }
+        )
+    }
 
     Row(Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
 
@@ -221,11 +231,35 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(32.dp))
 
+            // ── ALTYAZI ─────────────────────────────────────────────
+            SectionLabel("ALTYAZI")
+            Spacer(Modifier.height(12.dp))
+
+            OptionRow(
+                title = "Altyazı Boyutu",
+                subtitle = "Yapay çeviri / soft-sub altyazıların yazı boyutu. " +
+                    "Değişiklik için bölümü yeniden açın.",
+                options = listOf("Küçük", "Orta", "Büyük", "Çok Büyük"),
+                selected = subtitleSize,
+                onSelect = { opt ->
+                    subtitleSize = opt
+                    val i = when (opt) {
+                        "Küçük" -> 0
+                        "Büyük" -> 2
+                        "Çok Büyük" -> 3
+                        else -> 1
+                    }
+                    prefs.edit().putInt("subtitle_size", i).apply()
+                },
+            )
+
+            Spacer(Modifier.height(32.dp))
+
             // ── UYGULAMA ────────────────────────────────────────────
             SectionLabel("UYGULAMA")
             Spacer(Modifier.height(12.dp))
 
-            InfoRow(title = "Sürüm", value = "1.1.6")
+            InfoRow(title = "Sürüm", value = "1.1.7")
             Spacer(Modifier.height(8.dp))
             InfoRow(title = "Geliştirici", value = "Alifzys")
             Spacer(Modifier.height(8.dp))

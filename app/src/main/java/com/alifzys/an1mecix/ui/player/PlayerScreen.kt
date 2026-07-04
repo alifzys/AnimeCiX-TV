@@ -41,6 +41,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Text
 import com.alifzys.an1mecix.AppContainer
@@ -337,6 +338,29 @@ private fun PlayerContent(
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     keepScreenOn = true
+                    // Altyazı görünümü: ayarlardan boyut + okunur kontur (siyah kenarlı beyaz).
+                    subtitleView?.apply {
+                        val fraction = when (
+                            ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                                .getInt("subtitle_size", 1)
+                        ) {
+                            0 -> 0.040f
+                            2 -> 0.075f
+                            3 -> 0.095f
+                            else -> 0.0533f
+                        }
+                        setFractionalTextSize(fraction)
+                        setStyle(
+                            CaptionStyleCompat(
+                                android.graphics.Color.WHITE,
+                                android.graphics.Color.TRANSPARENT,
+                                android.graphics.Color.TRANSPARENT,
+                                CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                                android.graphics.Color.BLACK,
+                                null,
+                            )
+                        )
+                    }
                 }
             },
         )
