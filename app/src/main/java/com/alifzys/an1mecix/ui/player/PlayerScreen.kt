@@ -32,6 +32,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.C
@@ -45,6 +46,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Text
 import com.alifzys.an1mecix.AppContainer
+import com.alifzys.an1mecix.R
 import com.alifzys.an1mecix.domain.model.Episode
 import com.alifzys.an1mecix.domain.model.StreamQuality
 import com.alifzys.an1mecix.domain.model.Subtitle
@@ -338,7 +340,7 @@ private fun PlayerContent(
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     keepScreenOn = true
-                    // Altyazı görünümü: ayarlardan boyut + okunur kontur (siyah kenarlı beyaz).
+                    // Altyazı görünümü: Amaranth font + ayarlardan boyut + okunur siyah kontur.
                     subtitleView?.apply {
                         val fraction = when (
                             ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -350,6 +352,9 @@ private fun PlayerContent(
                             else -> 0.0533f
                         }
                         setFractionalTextSize(fraction)
+                        val amaranth = runCatching {
+                            ResourcesCompat.getFont(ctx, R.font.amaranth)
+                        }.getOrNull()
                         setStyle(
                             CaptionStyleCompat(
                                 android.graphics.Color.WHITE,
@@ -357,7 +362,7 @@ private fun PlayerContent(
                                 android.graphics.Color.TRANSPARENT,
                                 CaptionStyleCompat.EDGE_TYPE_OUTLINE,
                                 android.graphics.Color.BLACK,
-                                null,
+                                amaranth,
                             )
                         )
                     }

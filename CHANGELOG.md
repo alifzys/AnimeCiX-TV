@@ -11,6 +11,7 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ### Eklendi
 - **Altyazı boyutu ayarı** (Ayarlar → Altyazı): Küçük / Orta / Büyük / Çok Büyük. Altyazılar okunurluk için siyah konturlu gösterilir.
+- **Altyazı yazı tipi: Amaranth** (varsayılan). Font, [SIL Open Font License](docs/fonts/Amaranth-OFL.txt) altında pakete gömülüdür.
 
 ## [1.1.6] - 2026-07-05
 
