@@ -14,8 +14,8 @@ android {
         applicationId = "com.alifzys.an1mecix"
         minSdk = 23           // Compose for TV minSdk 21 ama Media3 + Room rahat etsin diye 23
         targetSdk = 34
-        versionCode = 5          // görünmez monoton sayaç (eski 1.1.1 = 4'ün üstüne kurulsun)
-        versionName = "1.1.2"
+        versionCode = 6          // görünmez monoton sayaç (eski 1.1.2 = 5'in üstüne kurulsun)
+        versionName = "1.1.3"
 
         // TV chipset 32-bit ARM (armeabi-v7a). Diğer ABI binary'lerini APK'ya koymaya gerek yok.
         ndk {

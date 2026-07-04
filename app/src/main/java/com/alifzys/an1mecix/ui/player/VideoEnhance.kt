@@ -31,18 +31,28 @@ enum class VideoEnhance(val pref: String) {
     }
 }
 
-/** ExoPlayer.setVideoEffects(...) için GL efekti. */
+/**
+ * ExoPlayer.setVideoEffects(...) için GL efekti.
+ * [scalePercent] yalnızca ANIME4K modunda upscale oranı (150 = 1.5x). Ayarlardan gelir.
+ */
 @UnstableApi
-class VideoEnhanceEffect(private val mode: VideoEnhance) : GlEffect {
+class VideoEnhanceEffect(
+    private val mode: VideoEnhance,
+    private val scalePercent: Int = 150,
+) : GlEffect {
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram =
-        EnhanceShaderProgram(mode, useHdr)
+        EnhanceShaderProgram(mode, scalePercent, useHdr)
 }
 
 @UnstableApi
 private class EnhanceShaderProgram(
     private val mode: VideoEnhance,
+    scalePercent: Int,
     useHdr: Boolean,
 ) : BaseGlShaderProgram(useHdr, /* texturePoolCapacity= */ 1) {
+
+    // 1.0x–3.0x arası; ayar dışı değerleri güvene al.
+    private val scalePercent = scalePercent.coerceIn(100, 300)
 
     private val glProgram: GlProgram = try {
         GlProgram(VERTEX_SHADER, if (mode == VideoEnhance.ANIME4K) FRAG_ANIME4K else FRAG_SHARPEN)
@@ -56,10 +66,10 @@ private class EnhanceShaderProgram(
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
         inW = inputWidth
         inH = inputHeight
-        // Anime4K: 1.5x upscale. 2x (4 kat piksel) kasıyordu; 1.5x (2.25 kat) + 5-tap
-        // shader ile yük ~3 kat azalır, upscale yine korunur. Keskinlik: upscale yok.
+        // Anime4K: ayarlanabilir upscale (varsayılan 1.5x). Yüksek oran = daha net ama
+        // kare başına daha çok piksel → GPU yükü. Keskinlik modunda upscale yok.
         return if (mode == VideoEnhance.ANIME4K) {
-            Size(inputWidth * 3 / 2, inputHeight * 3 / 2)
+            Size(inputWidth * scalePercent / 100, inputHeight * scalePercent / 100)
         } else {
             Size(inputWidth, inputHeight)
         }

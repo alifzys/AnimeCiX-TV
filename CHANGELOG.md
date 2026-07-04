@@ -7,9 +7,12 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
-Bu sürümdeki değişiklikler henüz bir GitHub Release'i olarak yayınlanmadı (gelecek 1.1.2).
+## [1.1.3] - 2026-07-04
 
 ### Eklendi
+- **Altyazı desteği:** yapay çeviri / soft-sub altyazılar artık oynatılıyor. tau-video WebVTT (`/vtt/`) altyazıları oynatıcıya bağlanır (Türkçe varsa varsayılan seçilir); indirilen bölümlerde altyazı da indirilip çevrimdışı gösterilir.
+- **Oynatıcıda D-pad ile sarma:** kontroller kapalıyken sağ/sol tuşu doğrudan ileri/geri sarar (±10 sn).
+- **Anime4K ölçek ayarı:** upscale oranı seçilebilir (1.5x / 2x / 2.5x / 3x) — Ayarlar → Görüntü.
 - GitHub Actions CI: her push/PR'da `assembleRelease` çalışır, başarılıysa APK'lar artifact olarak yüklenir.
 - Hata bildirimi ve özellik isteği için Türkçe issue şablonları.
 - Bu `CHANGELOG.md`.
@@ -21,6 +24,8 @@ Bu sürümdeki değişiklikler henüz bir GitHub Release'i olarak yayınlanmadı
 - Ana ekranda poster odak animasyonu daha akıcı hale getirildi (gecikme kapısı kaldırıldı, geçiş süresi ayarlandı).
 
 ### Düzeltildi
+- **Opening/Ending atlama yanlış zamanda çıkıyordu** (bölümün en başında, gerçek opening'e bakmadan) → artık tau-video'nun gerçek intro/outro zamanları kullanılır; "Opening Atla" bandı yalnızca opening sırasında çıkar.
+- **Yapay çevirili animelerde altyazı görünmüyordu** → altyazı artık oynatılır (yukarıya bakınız).
 - Oynatıcıda **kalite değiştirince bölüm baştan başlıyordu** → artık mevcut konum korunur.
 - **Arama geçmişi her karakteri kaydediyordu** ("b", "bl", "ble"...) → artık yalnızca bir sonuç açıldığında veya "ARA"ya basıldığında tam sorgu kaydedilir.
 - Ana ekranda aşağı kaydırılmışken **Geri tuşu ortadaki bir satıra atlıyordu** → artık en üste dönüp vitrindeki "İncele" butonuna odaklanır; en üstteyken uygulamadan çıkar.
@@ -40,5 +45,6 @@ Bu sürümdeki değişiklikler henüz bir GitHub Release'i olarak yayınlanmadı
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.3
 [1.1.1]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.1

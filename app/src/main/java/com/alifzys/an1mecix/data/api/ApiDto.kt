@@ -198,7 +198,13 @@ data class CommentUserDto(
 // Tau-video
 @Serializable
 data class TauVideoDto(
+    @SerialName("_id") val id: String? = null,
+    val title_id: Int? = null,
+    val season_number: Int? = null,
+    val episode_number: JsonElement? = null,
+    val translator: JsonElement? = null,
     val urls: List<TauUrlDto>? = null,
+    val subs: List<TauSubDto>? = null,
     val thumbnails: Map<String, String>? = null,
     val duration: Double? = null,
 )
@@ -208,4 +214,26 @@ data class TauUrlDto(
     val label: String? = null,
     val url: String,
     val size: Long? = null,
+)
+
+/** Soft-sub: yapay çeviri / fansub altyazı. url = ham .ass, id ile /vtt/ WebVTT alınır. */
+@Serializable
+data class TauSubDto(
+    val id: JsonElement? = null,
+    val language: String? = null,
+    val name: String? = null,
+    val url: String? = null,
+)
+
+/** Opening/ending markörleri (/api/most-sought). */
+@Serializable
+data class MostSoughtDto(
+    val intro: SkipMarkerDto? = null,
+    val outro: SkipMarkerDto? = null,
+)
+
+@Serializable
+data class SkipMarkerDto(
+    val from: Double? = null,
+    val to: Double? = null,
 )

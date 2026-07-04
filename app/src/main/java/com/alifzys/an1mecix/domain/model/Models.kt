@@ -120,6 +120,21 @@ data class Comment(
 
 data class StreamQuality(val label: String, val url: String, val size: Long? = null)
 
+/** Oynatıcıya iliştirilen altyazı parçası. [url] WebVTT (tau /vtt/) veya lokal dosya. */
+data class Subtitle(
+    val label: String,
+    val language: String?,
+    val url: String,
+)
+
+/** Opening/ending atlama zamanları (saniye). Yoksa null. */
+data class SkipMarkers(
+    val introFrom: Long? = null,
+    val introTo: Long? = null,
+    val outroFrom: Long? = null,
+    val outroTo: Long? = null,
+)
+
 data class ResolvedStream(
     val provider: String,
     val qualities: List<StreamQuality>,
@@ -127,6 +142,8 @@ data class ResolvedStream(
     /** saniye → thumbnail URL (player scrubbing için). */
     val thumbnails: Map<String, String> = emptyMap(),
     val referer: String? = null,
+    val subtitles: List<Subtitle> = emptyList(),
+    val markers: SkipMarkers? = null,
 )
 
 data class GenreInfo(val slug: String, val name: String, val image: String? = null)

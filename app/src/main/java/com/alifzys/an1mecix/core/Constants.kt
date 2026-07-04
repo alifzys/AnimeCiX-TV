@@ -21,6 +21,12 @@ object Constants {
     /** tau-video video meta API'si; sonuna video id eklenir. */
     const val TAU_API = "https://tau-video.xyz/api/video/"
 
+    /** tau-video altyazı (WebVTT) endpoint'i; sonuna altyazı id eklenir. */
+    const val TAU_VTT = "https://tau-video.xyz/vtt/"
+
+    /** tau-video intro/outro (opening/ending) markörleri; x-player-sig imzası ister. */
+    const val TAU_MOST_SOUGHT = "https://tau-video.xyz/api/most-sought/"
+
     /** GitHub Releases API — en son sürüm kontrolü. */
     const val GITHUB_RELEASES_API =
         "https://api.github.com/repos/alifzys/AnimeCiX-TV/releases/latest"

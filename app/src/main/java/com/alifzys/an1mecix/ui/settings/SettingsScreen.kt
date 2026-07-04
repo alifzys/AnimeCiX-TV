@@ -52,6 +52,16 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
     }
+    var anime4kScale by remember {
+        mutableStateOf(
+            when (prefs.getInt("anime4k_scale", 150)) {
+                200 -> "2x"
+                250 -> "2.5x"
+                300 -> "3x"
+                else -> "1.5x"
+            }
+        )
+    }
 
     Row(Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
 
@@ -132,7 +142,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             ToggleRow(
                 title = "Açılışı (Opening) Otomatik Atla",
-                subtitle = "Bölüm başında 10 sn'lik geri sayımla opening atlanır",
+                subtitle = "Opening tespit edilince 10 sn'lik geri sayımla atlama önerilir",
                 checked = skipOpening,
                 onToggle = {
                     skipOpening = it
@@ -189,13 +199,33 @@ fun SettingsScreen(onBack: () -> Unit) {
                 },
             )
 
+            Spacer(Modifier.height(8.dp))
+
+            OptionRow(
+                title = "Anime4K Ölçeği",
+                subtitle = "Anime4K modunda upscale oranı. Yüksek = daha net ama daha çok GPU yükü. " +
+                    "Zayıf TV'de takılırsa düşür. Değişiklik için bölümü yeniden açın.",
+                options = listOf("1.5x", "2x", "2.5x", "3x"),
+                selected = anime4kScale,
+                onSelect = { opt ->
+                    anime4kScale = opt
+                    val pct = when (opt) {
+                        "2x" -> 200
+                        "2.5x" -> 250
+                        "3x" -> 300
+                        else -> 150
+                    }
+                    prefs.edit().putInt("anime4k_scale", pct).apply()
+                },
+            )
+
             Spacer(Modifier.height(32.dp))
 
             // ── UYGULAMA ────────────────────────────────────────────
             SectionLabel("UYGULAMA")
             Spacer(Modifier.height(12.dp))
 
-            InfoRow(title = "Sürüm", value = "1.1.0")
+            InfoRow(title = "Sürüm", value = "1.1.3")
             Spacer(Modifier.height(8.dp))
             InfoRow(title = "Geliştirici", value = "Alifzys")
             Spacer(Modifier.height(8.dp))

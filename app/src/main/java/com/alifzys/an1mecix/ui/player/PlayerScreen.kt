@@ -1,6 +1,7 @@
 package com.alifzys.an1mecix.ui.player
 
 import android.content.Context
+import android.net.Uri
 import android.view.KeyEvent as AKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -33,7 +34,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -43,6 +46,7 @@ import androidx.tv.material3.Text
 import com.alifzys.an1mecix.AppContainer
 import com.alifzys.an1mecix.domain.model.Episode
 import com.alifzys.an1mecix.domain.model.StreamQuality
+import com.alifzys.an1mecix.domain.model.Subtitle
 import com.alifzys.an1mecix.domain.model.VideoSource
 import com.alifzys.an1mecix.ui.components.FullScreenLoading
 import kotlinx.coroutines.delay
@@ -54,13 +58,11 @@ private val SHOW_KEYS = setOf(
     AKeyEvent.KEYCODE_NUMPAD_ENTER, AKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
 )
 
-// Opening/Ending atlama pencereleri (saniye). API intro/outro markörü vermediği
-// için sezgisel: opening bölüm başında, ending bölüm sonunda.
-private const val OPENING_SHOW_START = 4L      // bu saniyeden sonra bandı göster
-private const val OPENING_SHOW_END = 85L       // bu saniyeye kadar göster
-private const val OPENING_SKIP_TO_MS = 90_000L // "Atla" → buraya sar
+// Opening atlama artık tau /most-sought markörlerinden gelir (gerçek intro from/to).
+// Ending için markör yoksa "bitişe kalan sn" sezgisel geçişi devreye girer.
 private const val ENDING_SHOW_MIN = 4L         // bitişe kalan sn alt sınır
 private const val ENDING_SHOW_MAX = 90L        // bitişe kalan sn üst sınır
+private const val SEEK_STEP_MS = 10_000L       // D-pad sol/sağ sarma adımı
 
 @androidx.media3.common.util.UnstableApi
 @Composable
@@ -137,15 +139,14 @@ private fun PlayerContent(
             .build()
             .also { p ->
                 // Görüntü iyileştirme (ayarlardan) — GL shader pipeline.
-                val enhance = VideoEnhance.from(
-                    context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                        .getString("video_enhance", "off")
-                )
-                android.util.Log.i("ACXFX", "enhance pref = $enhance")
+                val settingsPrefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                val enhance = VideoEnhance.from(settingsPrefs.getString("video_enhance", "off"))
+                val anime4kScale = settingsPrefs.getInt("anime4k_scale", 150)
+                android.util.Log.i("ACXFX", "enhance pref = $enhance, scale = $anime4kScale")
                 if (enhance != VideoEnhance.OFF) {
                     try {
-                        p.setVideoEffects(listOf(VideoEnhanceEffect(enhance)))
-                        android.util.Log.i("ACXFX", "setVideoEffects OK -> $enhance")
+                        p.setVideoEffects(listOf(VideoEnhanceEffect(enhance, anime4kScale)))
+                        android.util.Log.i("ACXFX", "setVideoEffects OK -> $enhance @$anime4kScale")
                     } catch (e: Throwable) {
                         android.util.Log.e("ACXFX", "setVideoEffects FAILED", e)
                     }
@@ -160,7 +161,7 @@ private fun PlayerContent(
         val sameEpisode = state.episode.id == preparedEpisodeId
         // setMediaItem'dan ÖNCE: currentPosition hâlâ eski (oynayan) videonun konumu.
         val keepPositionMs = if (sameEpisode) exoPlayer.currentPosition else 0L
-        exoPlayer.setMediaItem(MediaItem.fromUri(state.currentQuality.url))
+        exoPlayer.setMediaItem(buildMediaItem(state.currentQuality.url, state.stream.subtitles))
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
         val seekTargetMs = if (sameEpisode) keepPositionMs
@@ -214,10 +215,22 @@ private fun PlayerContent(
 
     val posSec = positionMs / 1000
     val durSec = durationMs / 1000
+    // Gerçek intro/outro zamanları tau /most-sought'tan (varsa). Yoksa opening bandı gösterilmez.
+    val markers = state.stream.markers
+    val introFrom = markers?.introFrom
+    val introTo = markers?.introTo
+    val outroFrom = markers?.outroFrom
+    val outroTo = markers?.outroTo
+
     val openingActive = skipOpeningOn && !openingHandled && state.detail.isSeries &&
-        posSec in OPENING_SHOW_START..OPENING_SHOW_END
-    val endingActive = skipEndingOn && !endingHandled && nextEp != null &&
+        introFrom != null && introTo != null && posSec in introFrom..introTo
+    // Ending: markör varsa ona göre; yoksa "bitişe kalan sn" sezgisi.
+    val endingByMarker = outroFrom != null &&
+        posSec >= outroFrom && (outroTo == null || posSec <= outroTo)
+    val endingByHeuristic = outroFrom == null &&
         durSec > 0L && (durSec - posSec) in ENDING_SHOW_MIN..ENDING_SHOW_MAX
+    val endingActive = skipEndingOn && !endingHandled && nextEp != null &&
+        (endingByMarker || endingByHeuristic)
     val skipActive = openingActive || endingActive
     val anySheetOpen = settingsOpen || speedSheetOpen || fansubSheetOpen
 
@@ -258,9 +271,26 @@ private fun PlayerContent(
             .onKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onKeyEvent false
                 val kc = ev.nativeKeyEvent.keyCode
-                if (!controlsVisible && kc in SHOW_KEYS) {
-                    controlsVisible = true
-                    return@onKeyEvent true  // bir defalık tüket
+                if (!controlsVisible) {
+                    when (kc) {
+                        // Kontroller kapalıyken sağ/sol → doğrudan sar (+ kontrolleri göster).
+                        AKeyEvent.KEYCODE_DPAD_LEFT -> {
+                            exoPlayer.seekTo((exoPlayer.currentPosition - SEEK_STEP_MS).coerceAtLeast(0))
+                            controlsVisible = true
+                            return@onKeyEvent true
+                        }
+                        AKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            val dur = exoPlayer.duration
+                            val target = exoPlayer.currentPosition + SEEK_STEP_MS
+                            exoPlayer.seekTo(if (dur > 0) target.coerceAtMost(dur) else target)
+                            controlsVisible = true
+                            return@onKeyEvent true
+                        }
+                        in SHOW_KEYS -> {
+                            controlsVisible = true
+                            return@onKeyEvent true  // bir defalık tüket
+                        }
+                    }
                 }
                 false
             }
@@ -300,9 +330,10 @@ private fun PlayerContent(
                 nextEp = nextEp,
                 playFocus = playFocus,
                 barFocus = barFocus,
-                onSeekBack = { exoPlayer.seekTo((positionMs - 10_000).coerceAtLeast(0)) },
-                onSeekFwd = { exoPlayer.seekTo((positionMs + 10_000).coerceAtMost(durationMs)) },
+                onSeekBack = { exoPlayer.seekTo((positionMs - SEEK_STEP_MS).coerceAtLeast(0)) },
+                onSeekFwd = { exoPlayer.seekTo((positionMs + SEEK_STEP_MS).coerceAtMost(durationMs)) },
                 onTogglePlay = { exoPlayer.playWhenReady = !exoPlayer.playWhenReady },
+                onHideControls = { controlsVisible = false },
                 onOpenSettings = { settingsOpen = true },
                 onOpenSpeed = { speedSheetOpen = true },
                 onOpenFansub = { fansubSheetOpen = true },
@@ -350,7 +381,7 @@ private fun PlayerContent(
             SkipPrompt(
                 label = "Opening Atla",
                 onSkipNow = {
-                    exoPlayer.seekTo(OPENING_SKIP_TO_MS)
+                    introTo?.let { exoPlayer.seekTo(it * 1000) }
                     openingHandled = true
                 },
                 onDismiss = { openingHandled = true },
@@ -366,6 +397,29 @@ private fun PlayerContent(
 }
 
 // ---------- Yardımcılar ----------
+
+/**
+ * Video + soft-sub altyazıları tek MediaItem'a bağlar. Altyazılar WebVTT (tau /vtt/);
+ * varsa Türkçe olan, yoksa ilk parça varsayılan (DEFAULT) seçilir → PlayerView otomatik gösterir.
+ */
+private fun buildMediaItem(url: String, subtitles: List<Subtitle>): MediaItem {
+    val builder = MediaItem.Builder().setUri(url)
+    if (subtitles.isNotEmpty()) {
+        val defaultIdx = subtitles
+            .indexOfFirst { it.language?.lowercase()?.startsWith("tr") == true }
+            .let { if (it >= 0) it else 0 }
+        val configs = subtitles.mapIndexed { i, sub ->
+            MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
+                .setMimeType(MimeTypes.TEXT_VTT)
+                .setLanguage(sub.language)
+                .setLabel(sub.label)
+                .setSelectionFlags(if (i == defaultIdx) C.SELECTION_FLAG_DEFAULT else 0)
+                .build()
+        }
+        builder.setSubtitleConfigurations(configs)
+    }
+    return builder.build()
+}
 
 /** Pill için kısa fansub etiketi. Temiz ve kısaysa adı, kredi metniyse "Fansub". */
 private fun VideoSource.shortFansubLabel(): String {

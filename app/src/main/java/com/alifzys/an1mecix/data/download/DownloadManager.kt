@@ -88,8 +88,12 @@ class DownloadManager(
     fun remove(episodeId: Int) {
         jobs.remove(episodeId)?.cancel()
         scope.launch {
-            dao.forEpisode(episodeId)?.filePath?.let { runCatching { File(it).delete() } }
+            dao.forEpisode(episodeId)?.let { e ->
+                e.filePath?.let { runCatching { File(it).delete() } }
+                e.subtitlePath?.let { runCatching { File(it).delete() } }
+            }
             File(downloadsDir(), "$episodeId.mp4").let { if (it.exists()) it.delete() }
+            File(downloadsDir(), "$episodeId.vtt").let { if (it.exists()) it.delete() }
             dao.delete(episodeId)
         }
     }
@@ -159,6 +163,8 @@ class DownloadManager(
                     outFile.length(),
                 )
             }
+            // Video tamamlandıktan sonra soft-sub altyazıyı da indir (best-effort).
+            runCatching { downloadSubtitle(episodeId, stream) }
         } catch (e: Exception) {
             runCatching { if (outFile.exists()) outFile.delete() }
             // İptal edilmediyse hata olarak işaretle (iptal = kayıt zaten silinecek)
@@ -166,5 +172,29 @@ class DownloadManager(
                 dao.updateProgress(episodeId, SavedEpisodeEntry.STATUS_FAILED, 0)
             }
         }
+    }
+
+    /** Türkçe (yoksa ilk) soft-sub WebVTT'yi lokal .vtt dosyasına indirip yolunu kaydeder. */
+    private suspend fun downloadSubtitle(
+        episodeId: Int,
+        stream: com.alifzys.an1mecix.domain.model.ResolvedStream,
+    ) {
+        val sub = stream.subtitles.firstOrNull {
+            it.language?.lowercase()?.startsWith("tr") == true
+        } ?: stream.subtitles.firstOrNull() ?: return
+
+        val subFile = File(downloadsDir(), "$episodeId.vtt")
+        val req = Request.Builder()
+            .url(sub.url)
+            .header("User-Agent", userAgent)
+            .apply { stream.referer?.let { header("Referer", it) } }
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) return
+            val bytes = resp.body?.bytes() ?: return
+            subFile.writeBytes(bytes)
+        }
+        dao.setSubtitlePath(episodeId, subFile.absolutePath)
     }
 }

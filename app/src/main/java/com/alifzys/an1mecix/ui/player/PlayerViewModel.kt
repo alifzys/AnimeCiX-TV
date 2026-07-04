@@ -14,6 +14,7 @@ import com.alifzys.an1mecix.domain.model.Comment
 import com.alifzys.an1mecix.domain.model.Episode
 import com.alifzys.an1mecix.domain.model.ResolvedStream
 import com.alifzys.an1mecix.domain.model.StreamQuality
+import com.alifzys.an1mecix.domain.model.Subtitle
 import com.alifzys.an1mecix.domain.model.VideoSource
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,10 +100,23 @@ class PlayerViewModel(
                     url = android.net.Uri.fromFile(File(path)).toString(),
                     size = entry.fileSize,
                 )
+                val subtitles = entry.subtitlePath
+                    ?.takeIf { File(it).exists() }
+                    ?.let {
+                        listOf(
+                            Subtitle(
+                                label = "Altyazı",
+                                language = "tr",
+                                url = android.net.Uri.fromFile(File(it)).toString(),
+                            )
+                        )
+                    }
+                    ?: emptyList()
                 val stream = ResolvedStream(
                     provider = "offline",
                     qualities = listOf(quality),
                     referer = null,
+                    subtitles = subtitles,
                 )
                 val source = VideoSource(
                     id = entry.sourceId,

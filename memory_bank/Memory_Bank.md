@@ -43,6 +43,17 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
+### 2026-07-04 — Altyazı + gerçek opening/ending + player D-pad + Anime4K ölçek
+Cihaz testinden 2 büyük + 3 küçük iş. **assembleRelease ✅, 31 test ✅** (kullanıcı cihaz testini kendi yapacak).
+- **① Soft-sub altyazı (BÜYÜK):** Kök neden → `TauVideoDto` `subs` alanını hiç parse etmiyordu, app altyazıyı hiç iliştirmiyordu. Tau `/api/video/` yanıtındaki `subs:[{id,language,name,url}]` artık okunuyor; `url` ham `.ass` (ExoPlayer desteklemez) yerine **`/vtt/{id}` WebVTT** kullanılıyor. `ResolvedStream.subtitles` eklendi; `PlayerScreen.buildMediaItem` `MediaItem.SubtitleConfiguration` (MIME text/vtt, tr varsa DEFAULT) bağlıyor → PlayerView otomatik gösteriyor. Streaming sub, video ile aynı `DefaultHttpDataSource` (tau Referer) üzerinden yükleniyor.
+  - **Offline de:** `DownloadManager` tamamlanınca tr (yoksa ilk) altyazıyı `{episodeId}.vtt`'ye indiriyor; DB `saved_episodes.subtitlePath` (**MIGRATION_2_3**, v3) + `setSubtitlePath` DAO; `loadOffline` file:// vtt iliştiriyor; `remove` .vtt'yi de siliyor.
+- **② Opening/Ending atlama (BÜYÜK):** Kök neden → sabit sezgi (4–85sn) kullanılıyordu, gerçek intro'ya bakmıyordu. Artık tau **`/api/most-sought/{title}_{season}_{ep}_{translator}?tauId={_id}`** (header `x-player-sig` = HMAC-SHA256, anahtar `t4u_pl4y3r_s3cr3t_k3y`, sitenin JS'inde açık) çağrılıyor → gerçek `intro{from,to}`/`outro{from,to}`. `SkipMarkers` domain modeli, `ResolvedStream.markers`. Opening bandı yalnızca `posSec in intro.from..intro.to` iken; "Atla" → `intro.to`'ya sar. Ending: markör varsa ona göre, yoksa eski "bitişe kalan sn" sezgisi (fallback). Marker yoksa yanlış opening bandı GÖSTERİLMEZ. (Canlı doğrulandı: örn. bir bölümde intro 116–206sn.)
+- **③ (küçük) D-pad sarma:** Kontroller kapalıyken sağ → +10sn, sol → −10sn doğrudan sarıyor (+ kontrolleri gösteriyor). Root `onKeyEvent`.
+- **④ (küçük) OK ile bar toggle:** Kontroller açıkken ProgressBar'da OK → kontrolleri **gizle** (eski: play/pause). Play/pause artık AŞAĞI → play butonunda. `PlayerControls`: `onTogglePlay`→`onOk`/`onHideControls`.
+- **⑤ (küçük) Anime4K ölçek:** `VideoEnhanceEffect(mode, scalePercent)` — configure `inW*pct/100`. Ayarlar'a "Anime4K Ölçeği" OptionRow (1.5x/2x/2.5x/3x → pref `anime4k_scale` 150/200/250/300). PlayerScreen prefs'ten okuyor. Değişiklik için bölüm yeniden açılmalı (enhance mode gibi).
+- Yan: Settings "Sürüm" 1.1.0→1.1.2; opening toggle metni güncellendi.
+- **Not:** Henüz commit/push YOK — kullanıcı cihazda test edecek.
+
 ### 2026-06-23 — GitHub repo iyileştirmeleri
 - **CI:** `.github/workflows/build.yml` — push/PR'da JDK17/ubuntu `assembleRelease`, başarılıysa APK'lar artifact. README badge satırına Build badge eklendi.
 - **Issue şablonları:** `.github/ISSUE_TEMPLATE/bug_report.md` (TV modeli/Android/uygulama sürümü/beklenen-gerçekleşen/logcat) + `feature_request.md` (TR).

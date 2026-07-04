@@ -69,6 +69,7 @@ internal fun PlayerOverlay(
     onSeekBack: () -> Unit,
     onSeekFwd: () -> Unit,
     onTogglePlay: () -> Unit,
+    onHideControls: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSpeed: () -> Unit,
     onOpenFansub: () -> Unit,
@@ -146,7 +147,7 @@ internal fun PlayerOverlay(
                 barFocus = barFocus,
                 onSeekBack = onSeekBack,
                 onSeekFwd = onSeekFwd,
-                onTogglePlay = onTogglePlay,
+                onOk = onHideControls,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -273,10 +274,10 @@ private fun ProgressBar(
     barFocus: FocusRequester,
     onSeekBack: () -> Unit,
     onSeekFwd: () -> Unit,
-    onTogglePlay: () -> Unit,
+    onOk: () -> Unit,
 ) {
     // Birincil oynatıcı odağı: kontroller açılınca buraya odaklanılır.
-    // SOL/SAĞ → ileri-geri sarma, OK → duraklat/devam. AŞAĞI → buton satırı.
+    // SOL/SAĞ → ileri-geri sarma, OK → kontrolleri gizle. AŞAĞI → buton satırı.
     var focused by remember { mutableStateOf(false) }
     val barH = if (focused) 4.dp else 2.dp
     val dotSize = if (focused) 16.dp else 10.dp
@@ -295,8 +296,7 @@ private fun ProgressBar(
                     AKeyEvent.KEYCODE_DPAD_RIGHT -> { onSeekFwd();  true }
                     AKeyEvent.KEYCODE_DPAD_CENTER,
                     AKeyEvent.KEYCODE_ENTER,
-                    AKeyEvent.KEYCODE_NUMPAD_ENTER,
-                    AKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { onTogglePlay(); true }
+                    AKeyEvent.KEYCODE_NUMPAD_ENTER -> { onOk(); true }
                     else -> false
                 }
             },

@@ -80,6 +80,9 @@ interface SavedEpisodeDao {
     @Query("UPDATE saved_episodes SET status = :status, progress = :progress, filePath = :filePath, fileSize = :fileSize WHERE episodeId = :episodeId")
     suspend fun markDone(episodeId: Int, status: Int, progress: Int, filePath: String?, fileSize: Long)
 
+    @Query("UPDATE saved_episodes SET subtitlePath = :path WHERE episodeId = :episodeId")
+    suspend fun setSubtitlePath(episodeId: Int, path: String?)
+
     @Query("DELETE FROM saved_episodes WHERE episodeId = :episodeId")
     suspend fun delete(episodeId: Int)
 }

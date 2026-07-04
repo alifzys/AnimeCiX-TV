@@ -65,6 +65,8 @@ data class SavedEpisodeEntry(
     val status: Int,
     val progress: Int,
     val savedAt: Long,
+    /** İndirilen soft-sub altyazının lokal yolu (.vtt). Yoksa null. */
+    val subtitlePath: String? = null,
 ) {
     companion object {
         const val STATUS_PENDING = 0
