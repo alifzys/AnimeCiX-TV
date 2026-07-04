@@ -43,6 +43,11 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
+### 2026-07-05 — Altyazı boyutu + Amaranth font (v1.1.7)
+- Altyazı boyutu ayarı (Ayarlar → Altyazı; pref `subtitle_size` 0-3) + okunur siyah kontur.
+- **Altyazı fontu Amaranth** (varsayılan): `res/font/amaranth.ttf` (OFL, `docs/fonts/Amaranth-OFL.txt`), `ResourcesCompat.getFont(ctx, R.font.amaranth)` → `CaptionStyleCompat` typeface. APK'da resource-shrink ile `res/4G.ttf` olarak gömülü.
+- **⚠️ Font, yeni sürüm açılmadan mevcut 1.1.7 release'i DEĞİŞTİRİLEREK eklendi** (kullanıcı isteği): versionName/versionCode 1.1.7/10 KORUNDU, tag `v1.1.7` yeni commit `237ff30`'a force taşındı, release APK'ları API ile silinip yeniden yüklendi. **Sonuç:** zaten 1.1.7 kurulu cihazlar auto-update ile fontu ALMAZ (isNewer eşit → false) → elle sideload gerekir; 1.1.6 ve altı auto-update ile alır.
+
 ### 2026-07-05 — Yapay çeviri altyazı GERÇEK fix (v1.1.6)
 - **Kök neden:** `vid` embed url'inde GELMİYOR — **animecix video id'sinin (`VideoSource.id`) ta kendisi.** Site `?vid={video.id}` ekliyor. v1.1.5'in "url'den vid çıkar" yaklaşımı boşa gidiyordu (url'de vid yok). Fix: `resolve(embedUrl, vid=source.id)`; PlayerViewModel x3 + DownloadManager `source.id`/`entry.sourceId` geçiriyor.
 - **Uçtan uca doğrulandı** (gerçek kullanıcı örneği): *Hyouken no Majutsushi* S1B2, video id/vid=662548 → `/api/video?vid=662548` subs dolu (sub id 2710, tr, `.ass`) → `/vtt/2710` geçerli WebVTT (200, her referer). Ayrıntı: [[tau-vid-subs]].
