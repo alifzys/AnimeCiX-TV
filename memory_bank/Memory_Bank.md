@@ -51,8 +51,8 @@ Cihaz testinden 2 büyük + 3 küçük iş. **assembleRelease ✅, 31 test ✅**
 - **③ (küçük) D-pad sarma:** Kontroller kapalıyken sağ → +10sn, sol → −10sn doğrudan sarıyor (+ kontrolleri gösteriyor). Root `onKeyEvent`.
 - **④ (küçük) OK ile bar toggle:** Kontroller açıkken ProgressBar'da OK → kontrolleri **gizle** (eski: play/pause). Play/pause artık AŞAĞI → play butonunda. `PlayerControls`: `onTogglePlay`→`onOk`/`onHideControls`.
 - **⑤ (küçük) Anime4K ölçek:** `VideoEnhanceEffect(mode, scalePercent)` — configure `inW*pct/100`. Ayarlar'a "Anime4K Ölçeği" OptionRow (1.5x/2x/2.5x/3x → pref `anime4k_scale` 150/200/250/300). PlayerScreen prefs'ten okuyor. Değişiklik için bölüm yeniden açılmalı (enhance mode gibi).
-- Yan: Settings "Sürüm" 1.1.0→1.1.2; opening toggle metni güncellendi.
-- **Not:** Henüz commit/push YOK — kullanıcı cihazda test edecek.
+- Yan: Settings "Sürüm" 1.1.3; opening toggle metni güncellendi.
+- ✅ **Yayınlandı (v1.1.3):** commit `2beb5f5` push'landı, tag `v1.1.3`, **GitHub Release oluşturuldu + 3 APK yüklendi** (universal/arm64/armeabi-v7a). `/releases/latest` = v1.1.3, `isNewer("1.1.3","1.1.2")`=true → cihazdaki 1.1.2 auto-update prompt'u alır. Release GitHub API ile (git credential manager'daki token) yapıldı — `gh` CLI hâlâ kurulu değil.
 
 ### 2026-06-23 — GitHub repo iyileştirmeleri
 - **CI:** `.github/workflows/build.yml` — push/PR'da JDK17/ubuntu `assembleRelease`, başarılıysa APK'lar artifact. README badge satırına Build badge eklendi.
