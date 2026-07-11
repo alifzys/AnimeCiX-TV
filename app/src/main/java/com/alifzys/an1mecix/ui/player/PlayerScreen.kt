@@ -40,10 +40,6 @@ import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.effect.Brightness
-import androidx.media3.effect.Contrast
-import androidx.media3.effect.HslAdjustment
-import androidx.media3.effect.RgbAdjustment
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -145,19 +141,11 @@ private fun PlayerContent(
                 val anime4kScale = settingsPrefs.getInt("anime4k_scale", 150)
                 val effects = buildList<Effect> {
                     if (enhance != VideoEnhance.OFF) add(VideoEnhanceEffect(enhance, anime4kScale))
-                    val b = settingsPrefs.getInt("color_brightness", 0)
-                    val c = settingsPrefs.getInt("color_contrast", 0)
-                    val s = settingsPrefs.getInt("color_saturation", 0)
-                    val t = settingsPrefs.getInt("color_temp", 0)
-                    if (b != 0) add(Brightness(b * 0.12f))
-                    if (c != 0) add(Contrast(c * 0.12f))
-                    if (s != 0) add(HslAdjustment.Builder().adjustSaturation(s * 18f).build())
-                    if (t != 0) add(
-                        RgbAdjustment.Builder()
-                            .setRedScale(1f + t * 0.07f)
-                            .setBlueScale(1f - t * 0.07f)
-                            .build()
-                    )
+                    // Renk Canlandırma (otomatik) — soluk eski anime renklerini canlandırır.
+                    when (settingsPrefs.getInt("color_revive", 0)) {
+                        1 -> add(ColorReviveEffect(0.5f))
+                        2 -> add(ColorReviveEffect(1.0f))
+                    }
                 }
                 if (effects.isNotEmpty()) {
                     try {

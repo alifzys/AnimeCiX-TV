@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.alifzys.an1mecix.ui.player.SubtitleEditorScreen
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
@@ -62,20 +63,15 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
     }
-    // Renk ayarları adım (-2..+2) olarak saklanır; oynatıcı efekte çevirir.
-    fun stepLabel(i: Int) = when (i) { -2 -> "-2"; -1 -> "-1"; 1 -> "+1"; 2 -> "+2"; else -> "0" }
-    fun parseStep(s: String) = when (s) { "-2" -> -2; "-1" -> -1; "+1" -> 1; "+2" -> 2; else -> 0 }
-    fun tempLabel(i: Int) = when (i) {
-        -2 -> "Çok Soğuk"; -1 -> "Soğuk"; 1 -> "Sıcak"; 2 -> "Çok Sıcak"; else -> "Normal"
-    }
-    fun parseTemp(s: String) = when (s) {
-        "Çok Soğuk" -> -2; "Soğuk" -> -1; "Sıcak" -> 1; "Çok Sıcak" -> 2; else -> 0
-    }
-    var brightness by remember { mutableStateOf(stepLabel(prefs.getInt("color_brightness", 0))) }
-    var contrast by remember { mutableStateOf(stepLabel(prefs.getInt("color_contrast", 0))) }
-    var saturation by remember { mutableStateOf(stepLabel(prefs.getInt("color_saturation", 0))) }
-    var temperature by remember { mutableStateOf(tempLabel(prefs.getInt("color_temp", 0))) }
+    // Renk Canlandırma: otomatik (Kapalı/Hafif/Güçlü) — pref color_revive 0/1/2.
+    fun reviveLabel(i: Int) = when (i) { 1 -> "Hafif"; 2 -> "Güçlü"; else -> "Kapalı" }
+    fun parseRevive(s: String) = when (s) { "Hafif" -> 1; "Güçlü" -> 2; else -> 0 }
+    var colorRevive by remember { mutableStateOf(reviveLabel(prefs.getInt("color_revive", 0))) }
 
+    // Ayarlardan açılan tam ekran altyazı düzenleyici.
+    var subtitleEditorOpen by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
 
         // Sol panel — başlık + geri butonu
@@ -237,60 +233,17 @@ fun SettingsScreen(onBack: () -> Unit) {
             // ── RENK ────────────────────────────────────────────────
             SectionLabel("RENK")
             Spacer(Modifier.height(12.dp))
-            Text(
-                text = "Renk değişiklikleri için bölümü yeniden açın.",
-                color = Color.White.copy(alpha = 0.4f),
-                fontSize = 12.sp,
-            )
-            Spacer(Modifier.height(12.dp))
 
             OptionRow(
-                title = "Parlaklık",
-                subtitle = "Görüntünün genel aydınlığı.",
-                options = listOf("-2", "-1", "0", "+1", "+2"),
-                selected = brightness,
+                title = "Renk Canlandırma (AI)",
+                subtitle = "Eski/soluk anime renklerini otomatik canlandırır (parlaklık, kontrast, " +
+                    "canlılık akıllıca artırılır) — renkler yeniymiş gibi görünür. " +
+                    "Güçlü daha etkili ama daha çok GPU yükü. Değişiklik için bölümü yeniden açın.",
+                options = listOf("Kapalı", "Hafif", "Güçlü"),
+                selected = colorRevive,
                 onSelect = { opt ->
-                    brightness = opt
-                    prefs.edit().putInt("color_brightness", parseStep(opt)).apply()
-                },
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            OptionRow(
-                title = "Kontrast",
-                subtitle = "Açık ve koyu tonlar arasındaki fark.",
-                options = listOf("-2", "-1", "0", "+1", "+2"),
-                selected = contrast,
-                onSelect = { opt ->
-                    contrast = opt
-                    prefs.edit().putInt("color_contrast", parseStep(opt)).apply()
-                },
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            OptionRow(
-                title = "Doygunluk",
-                subtitle = "Renklerin canlılığı (soluk ↔ canlı).",
-                options = listOf("-2", "-1", "0", "+1", "+2"),
-                selected = saturation,
-                onSelect = { opt ->
-                    saturation = opt
-                    prefs.edit().putInt("color_saturation", parseStep(opt)).apply()
-                },
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            OptionRow(
-                title = "Sıcaklık",
-                subtitle = "Renk tonu — soğuk (mavi) ↔ sıcak (kırmızı/sarı).",
-                options = listOf("Çok Soğuk", "Soğuk", "Normal", "Sıcak", "Çok Sıcak"),
-                selected = temperature,
-                onSelect = { opt ->
-                    temperature = opt
-                    prefs.edit().putInt("color_temp", parseTemp(opt)).apply()
+                    colorRevive = opt
+                    prefs.edit().putInt("color_revive", parseRevive(opt)).apply()
                 },
             )
 
@@ -300,16 +253,11 @@ fun SettingsScreen(onBack: () -> Unit) {
             SectionLabel("ALTYAZI")
             Spacer(Modifier.height(12.dp))
 
-            InfoRow(
+            ActionRow(
                 title = "Altyazı Düzenleyici",
-                value = "Oynatıcıda: Aa",
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Boyut, konum, font, iç/dış renk ve gölge artık oynatıcıdaki " +
-                    "\"Aa\" butonundan canlı ayarlanır.",
-                color = Color.White.copy(alpha = 0.4f),
-                fontSize = 12.sp,
+                subtitle = "Boyut, konum, font, iç/dış renk ve gölgeyi canlı önizlemeyle ayarla.",
+                actionLabel = "Aç ▶",
+                onClick = { subtitleEditorOpen = true },
             )
 
             Spacer(Modifier.height(32.dp))
@@ -323,6 +271,12 @@ fun SettingsScreen(onBack: () -> Unit) {
             InfoRow(title = "Geliştirici", value = "Alifzys")
             Spacer(Modifier.height(8.dp))
             InfoRow(title = "Platform", value = "Android TV")
+        }
+    }
+
+        // Tam ekran altyazı düzenleyici (boş önizleme + sağda slider'lar)
+        if (subtitleEditorOpen) {
+            SubtitleEditorScreen(onBack = { subtitleEditorOpen = false })
         }
     }
 }
@@ -429,6 +383,51 @@ private fun OptionRow(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionRow(
+    title: String,
+    subtitle: String,
+    actionLabel: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color(0xFF15151E),
+            contentColor = Color.White,
+            focusedContainerColor = Color(0xFF1E1E2A),
+            focusedContentColor = Color.White,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(3.dp))
+                Text(text = subtitle, fontSize = 12.sp, color = Color.White.copy(alpha = 0.45f))
+            }
+            Spacer(Modifier.width(20.dp))
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFFE53935))
+                    .padding(horizontal = 16.dp, vertical = 7.dp),
+            ) {
+                Text(
+                    text = actionLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
             }
         }
     }

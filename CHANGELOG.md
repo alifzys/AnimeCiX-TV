@@ -10,9 +10,9 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 ## [1.1.8] - 2026-07-12
 
 ### Eklendi
-- **Altyazı Düzenleyici (oynatıcıda, canlı):** kontrol çubuğundaki **"Aa"** butonu. Boyut ve dikey konum (slider), font, iç/dış renk ve kenar/gölge (Kontur/Gölge/Kabartma/Kapalı) canlı önizlemeyle ayarlanır. Ayarlardaki eski "Altyazı Boyutu" düğmeleri kaldırıldı.
+- **Altyazı Düzenleyici (canlı önizlemeli):** hem **Ayarlar → Altyazı → Altyazı Düzenleyici** (boş önizleme ekranı + sağda slider'lar), hem de oynatıcıda kontrol çubuğundaki **"Aa"** butonu (video üstünde canlı). Boyut ve dikey konum (slider), font, iç/dış renk ve kenar/gölge (Kontur/Gölge/Kabartma/Kapalı). Ayarlardaki eski "Altyazı Boyutu" düğmeleri kaldırıldı.
 - **Font seçimi:** gömülü presetler (Amaranth, Quicksand, PT Sans, PT Serif — hepsi SIL OFL) **+** kendi fontun: `.ttf/.otf` dosyanı `Android/data/com.alifzys.an1mecix/files/fonts/` klasörüne atınca düzenleyicide listelenir.
-- **Renk ayarları (Ayarlar → Renk):** Parlaklık, Kontrast, Doygunluk, Sıcaklık. Media3 renk efektleriyle uygulanır (değişiklik için bölümü yeniden açın).
+- **Renk Canlandırma (AI) — Ayarlar → Renk:** Kapalı / Hafif / Güçlü. Eski/soluk anime renklerini otomatik canlandırır (akıllı siyah-beyaz nokta esnetme + kontrast + vibrance) → renkler yeniymiş gibi görünür. GPU shader ile; gerçek zamanlı ML değil. Değişiklik için bölümü yeniden açın.
 - **Kontroller açılınca altyazı yukarı kayar** → ilerleme çubuğunun arkasında kalmaz.
 
 ### Düzeltildi

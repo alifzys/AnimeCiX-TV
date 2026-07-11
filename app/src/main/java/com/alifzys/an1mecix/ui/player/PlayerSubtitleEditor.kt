@@ -1,6 +1,7 @@
 package com.alifzys.an1mecix.ui.player
 
 import android.view.KeyEvent as AKeyEvent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -36,12 +37,16 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -431,4 +436,75 @@ private fun isLight(color: Int): Boolean {
     val g = (color shr 8) and 0xFF
     val b = color and 0xFF
     return (0.299 * r + 0.587 * g + 0.114 * b) > 160
+}
+
+/**
+ * Ayarlardan açılan TAM EKRAN altyazı düzenleyici: boş bir önizleme zemini üstünde,
+ * tıpkı oynatıcıdaki gibi sağda slider'lar. Kendi state'ini tutar ve prefs'e yazar
+ * (oynatmada da aynı ayarlar kullanılır). BACK ile kapanır.
+ */
+@Composable
+internal fun SubtitleEditorScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    val prefs = remember {
+        ctx.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+    }
+    var sizeFrac by remember { mutableFloatStateOf(prefs.getFloat(SubtitleStyle.KEY_SIZE, SubtitleStyle.DEF_SIZE)) }
+    var bottomFrac by remember { mutableFloatStateOf(prefs.getFloat(SubtitleStyle.KEY_BOTTOM, SubtitleStyle.DEF_BOTTOM)) }
+    var fontId by remember { mutableStateOf(prefs.getString(SubtitleStyle.KEY_FONT, SubtitleStyle.DEF_FONT) ?: SubtitleStyle.DEF_FONT) }
+    var fill by remember { mutableIntStateOf(prefs.getInt(SubtitleStyle.KEY_FILL, SubtitleStyle.DEF_FILL)) }
+    var edgeColor by remember { mutableIntStateOf(prefs.getInt(SubtitleStyle.KEY_EDGE_COLOR, SubtitleStyle.DEF_EDGE_COLOR)) }
+    var edgeType by remember { mutableIntStateOf(prefs.getInt(SubtitleStyle.KEY_EDGE_TYPE, SubtitleStyle.DEF_EDGE_TYPE)) }
+    val fonts = remember { SubtitleStyle.availableFonts(ctx) }
+
+    BackHandler(onBack = onBack)
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(listOf(Color(0xFF262630), Color(0xFF121217)))
+            ),
+    ) {
+        SubtitleEditorSheet(
+            sizeFrac = sizeFrac,
+            onSizeDelta = { d ->
+                sizeFrac = (sizeFrac + d * SubtitleStyle.STEP_SIZE)
+                    .coerceIn(SubtitleStyle.MIN_SIZE, SubtitleStyle.MAX_SIZE)
+                prefs.edit().putFloat(SubtitleStyle.KEY_SIZE, sizeFrac).apply()
+            },
+            bottomFrac = bottomFrac,
+            onBottomDelta = { d ->
+                bottomFrac = (bottomFrac + d * SubtitleStyle.STEP_BOTTOM)
+                    .coerceIn(SubtitleStyle.MIN_BOTTOM, SubtitleStyle.MAX_BOTTOM)
+                prefs.edit().putFloat(SubtitleStyle.KEY_BOTTOM, bottomFrac).apply()
+            },
+            fontId = fontId,
+            fonts = fonts,
+            onFont = { fontId = it; prefs.edit().putString(SubtitleStyle.KEY_FONT, it).apply() },
+            fillColor = fill,
+            onFill = { fill = it; prefs.edit().putInt(SubtitleStyle.KEY_FILL, it).apply() },
+            edgeColor = edgeColor,
+            onEdge = { edgeColor = it; prefs.edit().putInt(SubtitleStyle.KEY_EDGE_COLOR, it).apply() },
+            edgeType = edgeType,
+            onEdgeType = { edgeType = it; prefs.edit().putInt(SubtitleStyle.KEY_EDGE_TYPE, it).apply() },
+            onReset = {
+                sizeFrac = SubtitleStyle.DEF_SIZE
+                bottomFrac = SubtitleStyle.DEF_BOTTOM
+                fontId = SubtitleStyle.DEF_FONT
+                fill = SubtitleStyle.DEF_FILL
+                edgeColor = SubtitleStyle.DEF_EDGE_COLOR
+                edgeType = SubtitleStyle.DEF_EDGE_TYPE
+                prefs.edit()
+                    .putFloat(SubtitleStyle.KEY_SIZE, SubtitleStyle.DEF_SIZE)
+                    .putFloat(SubtitleStyle.KEY_BOTTOM, SubtitleStyle.DEF_BOTTOM)
+                    .putString(SubtitleStyle.KEY_FONT, SubtitleStyle.DEF_FONT)
+                    .putInt(SubtitleStyle.KEY_FILL, SubtitleStyle.DEF_FILL)
+                    .putInt(SubtitleStyle.KEY_EDGE_COLOR, SubtitleStyle.DEF_EDGE_COLOR)
+                    .putInt(SubtitleStyle.KEY_EDGE_TYPE, SubtitleStyle.DEF_EDGE_TYPE)
+                    .apply()
+            },
+            onDismiss = onBack,
+        )
+    }
 }
