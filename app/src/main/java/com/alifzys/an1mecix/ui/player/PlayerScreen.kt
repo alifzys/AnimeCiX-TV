@@ -17,6 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,13 +33,17 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.C
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.effect.Brightness
+import androidx.media3.effect.Contrast
+import androidx.media3.effect.HslAdjustment
+import androidx.media3.effect.RgbAdjustment
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -46,7 +51,6 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Text
 import com.alifzys.an1mecix.AppContainer
-import com.alifzys.an1mecix.R
 import com.alifzys.an1mecix.domain.model.Episode
 import com.alifzys.an1mecix.domain.model.StreamQuality
 import com.alifzys.an1mecix.domain.model.Subtitle
@@ -134,15 +138,31 @@ private fun PlayerContent(
             .setMediaSourceFactory(sourceFactory)
             .build()
             .also { p ->
-                // Görüntü iyileştirme (ayarlardan) — GL shader pipeline.
+                // Görüntü iyileştirme + renk ayarları (ayarlardan) — GL efekt hattı.
+                // Renk değerleri adım (-2..+2 / sıcaklık) olarak saklanır; burada efekte çevrilir.
                 val settingsPrefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                 val enhance = VideoEnhance.from(settingsPrefs.getString("video_enhance", "off"))
                 val anime4kScale = settingsPrefs.getInt("anime4k_scale", 150)
-                android.util.Log.i("ACXFX", "enhance pref = $enhance, scale = $anime4kScale")
-                if (enhance != VideoEnhance.OFF) {
+                val effects = buildList<Effect> {
+                    if (enhance != VideoEnhance.OFF) add(VideoEnhanceEffect(enhance, anime4kScale))
+                    val b = settingsPrefs.getInt("color_brightness", 0)
+                    val c = settingsPrefs.getInt("color_contrast", 0)
+                    val s = settingsPrefs.getInt("color_saturation", 0)
+                    val t = settingsPrefs.getInt("color_temp", 0)
+                    if (b != 0) add(Brightness(b * 0.12f))
+                    if (c != 0) add(Contrast(c * 0.12f))
+                    if (s != 0) add(HslAdjustment.Builder().adjustSaturation(s * 18f).build())
+                    if (t != 0) add(
+                        RgbAdjustment.Builder()
+                            .setRedScale(1f + t * 0.07f)
+                            .setBlueScale(1f - t * 0.07f)
+                            .build()
+                    )
+                }
+                if (effects.isNotEmpty()) {
                     try {
-                        p.setVideoEffects(listOf(VideoEnhanceEffect(enhance, anime4kScale)))
-                        android.util.Log.i("ACXFX", "setVideoEffects OK -> $enhance @$anime4kScale")
+                        p.setVideoEffects(effects)
+                        android.util.Log.i("ACXFX", "setVideoEffects OK -> ${effects.size} efekt")
                     } catch (e: Throwable) {
                         android.util.Log.e("ACXFX", "setVideoEffects FAILED", e)
                     }
@@ -152,6 +172,10 @@ private fun PlayerContent(
 
     // Hangi bölüm için hazırlık yapıldığını izle: aynı bölümde sadece KALİTE
     // değiştiğinde baştan başlamasın, mevcut konumdan devam etsin.
+    var positionMs by remember { mutableLongStateOf(0L) }
+    var durationMs by remember { mutableLongStateOf(0L) }
+    var isPlaying by remember { mutableStateOf(true) }
+
     var preparedEpisodeId by remember { mutableStateOf(-1) }
     LaunchedEffect(state.currentQuality.url) {
         val sameEpisode = state.episode.id == preparedEpisodeId
@@ -163,12 +187,14 @@ private fun PlayerContent(
         val seekTargetMs = if (sameEpisode) keepPositionMs
             else state.resumeAt?.let { (it * 1000).toLong() } ?: 0L
         if (seekTargetMs > 0) exoPlayer.seekTo(seekTargetMs)
+        // Yeni bölüme geçerken eski bölümün konum/süresi UI'da KALMASIN. Aksi halde
+        // ~500ms boyunca eski (sona yakın) değerlerle "bitişe kalan sn" sezgisi yeni
+        // bölümün BAŞINDA "Sonraki Bölüm" bandını açıyordu. duration=0 → sezgi susar.
+        positionMs = seekTargetMs
+        durationMs = 0L
+        isPlaying = true
         preparedEpisodeId = state.episode.id
     }
-
-    var positionMs by remember { mutableLongStateOf(0L) }
-    var durationMs by remember { mutableLongStateOf(0L) }
-    var isPlaying by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -198,6 +224,7 @@ private fun PlayerContent(
     var speedSheetOpen by remember { mutableStateOf(false) }
     var fansubSheetOpen by remember { mutableStateOf(false) }
     var subtitleSheetOpen by remember { mutableStateOf(false) }
+    var subtitleEditorOpen by remember { mutableStateOf(false) }
     var currentSpeed by remember { mutableFloatStateOf(1f) }
     val playFocus = remember { FocusRequester() }
     val barFocus = remember { FocusRequester() }
@@ -232,6 +259,17 @@ private fun PlayerContent(
 
     // ── Opening / Ending atlama (ayarlardan) ───────────────────────────────
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+
+    // Altyazı stili — canlı düzenlenebilir; AndroidView update'inde subtitleView'a uygulanır.
+    var subSizeFrac by remember { mutableFloatStateOf(prefs.getFloat(SubtitleStyle.KEY_SIZE, SubtitleStyle.DEF_SIZE)) }
+    var subBottomFrac by remember { mutableFloatStateOf(prefs.getFloat(SubtitleStyle.KEY_BOTTOM, SubtitleStyle.DEF_BOTTOM)) }
+    var subFontId by remember { mutableStateOf(prefs.getString(SubtitleStyle.KEY_FONT, SubtitleStyle.DEF_FONT) ?: SubtitleStyle.DEF_FONT) }
+    var subFill by remember { mutableIntStateOf(prefs.getInt(SubtitleStyle.KEY_FILL, SubtitleStyle.DEF_FILL)) }
+    var subEdgeColor by remember { mutableIntStateOf(prefs.getInt(SubtitleStyle.KEY_EDGE_COLOR, SubtitleStyle.DEF_EDGE_COLOR)) }
+    var subEdgeType by remember { mutableIntStateOf(prefs.getInt(SubtitleStyle.KEY_EDGE_TYPE, SubtitleStyle.DEF_EDGE_TYPE)) }
+    val subTypeface = remember(subFontId) { SubtitleStyle.typefaceFor(context, subFontId) }
+    val availableFonts = remember { SubtitleStyle.availableFonts(context) }
+
     val skipOpeningOn = remember { prefs.getBoolean("skip_opening", true) }
     val skipEndingOn = remember { prefs.getBoolean("skip_ending", true) }
     var openingHandled by remember(state.episode.id) { mutableStateOf(false) }
@@ -252,11 +290,13 @@ private fun PlayerContent(
     val endingByMarker = outroFrom != null &&
         posSec >= outroFrom && (outroTo == null || posSec <= outroTo)
     val endingByHeuristic = outroFrom == null &&
-        durSec > 0L && (durSec - posSec) in ENDING_SHOW_MIN..ENDING_SHOW_MAX
+        durSec > 0L && posSec > ENDING_SHOW_MAX &&
+        (durSec - posSec) in ENDING_SHOW_MIN..ENDING_SHOW_MAX
     val endingActive = skipEndingOn && !endingHandled && nextEp != null &&
         (endingByMarker || endingByHeuristic)
     val skipActive = openingActive || endingActive
-    val anySheetOpen = settingsOpen || speedSheetOpen || fansubSheetOpen || subtitleSheetOpen
+    val anySheetOpen = settingsOpen || speedSheetOpen || fansubSheetOpen ||
+        subtitleSheetOpen || subtitleEditorOpen
 
     // Otomatik gizleme yalnızca OYNARKEN; duraklatıldığında kontroller kalsın.
     LaunchedEffect(controlsVisible, anySheetOpen, skipActive, isPlaying) {
@@ -280,6 +320,7 @@ private fun PlayerContent(
             speedSheetOpen   -> { speedSheetOpen = false; controlsVisible = true }
             fansubSheetOpen  -> { fansubSheetOpen = false; controlsVisible = true }
             subtitleSheetOpen -> { subtitleSheetOpen = false; controlsVisible = true }
+            subtitleEditorOpen -> { subtitleEditorOpen = false; controlsVisible = true }
             openingActive    -> openingHandled = true
             endingActive     -> endingHandled = true
             controlsVisible  -> controlsVisible = false
@@ -340,32 +381,26 @@ private fun PlayerContent(
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     keepScreenOn = true
-                    // Altyazı görünümü: Amaranth font + ayarlardan boyut + okunur siyah kontur.
-                    subtitleView?.apply {
-                        val fraction = when (
-                            ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                                .getInt("subtitle_size", 1)
-                        ) {
-                            0 -> 0.040f
-                            2 -> 0.075f
-                            3 -> 0.095f
-                            else -> 0.0533f
-                        }
-                        setFractionalTextSize(fraction)
-                        val amaranth = runCatching {
-                            ResourcesCompat.getFont(ctx, R.font.amaranth)
-                        }.getOrNull()
-                        setStyle(
-                            CaptionStyleCompat(
-                                android.graphics.Color.WHITE,
-                                android.graphics.Color.TRANSPARENT,
-                                android.graphics.Color.TRANSPARENT,
-                                CaptionStyleCompat.EDGE_TYPE_OUTLINE,
-                                android.graphics.Color.BLACK,
-                                amaranth,
-                            )
+                }
+            },
+            // Altyazı stili düzenleyiciden CANLI gelir; her state değişiminde uygulanır.
+            update = { pv ->
+                pv.subtitleView?.apply {
+                    setFractionalTextSize(subSizeFrac)
+                    // Kontroller açıkken altyazı ilerleme çubuğunun ÜSTÜne kalksın.
+                    val lift = if (controlsVisible && !anySheetOpen && !skipActive)
+                        SubtitleStyle.CONTROLS_LIFT else 0f
+                    setBottomPaddingFraction((subBottomFrac + lift).coerceIn(0f, 0.9f))
+                    setStyle(
+                        CaptionStyleCompat(
+                            subFill,
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT,
+                            subEdgeType,
+                            subEdgeColor,
+                            subTypeface,
                         )
-                    }
+                    )
                 }
             },
         )
@@ -402,6 +437,7 @@ private fun PlayerContent(
                 onOpenSpeed = { speedSheetOpen = true },
                 onOpenFansub = { fansubSheetOpen = true },
                 onOpenSubtitle = { subtitleSheetOpen = true },
+                onOpenSubtitleEditor = { subtitleEditorOpen = true },
                 onPlayEpisode = onPlayEpisode,
             )
         }
@@ -448,6 +484,50 @@ private fun PlayerContent(
                 current = currentSubtitle,
                 onSelect = { sub -> applySubtitle(sub); subtitleSheetOpen = false },
                 onDismiss = { subtitleSheetOpen = false },
+            )
+        }
+
+        // Altyazı düzenleyici (boyut/konum/font/renk/gölge — canlı)
+        if (subtitleEditorOpen) {
+            SubtitleEditorSheet(
+                sizeFrac = subSizeFrac,
+                onSizeDelta = { d ->
+                    subSizeFrac = (subSizeFrac + d * SubtitleStyle.STEP_SIZE)
+                        .coerceIn(SubtitleStyle.MIN_SIZE, SubtitleStyle.MAX_SIZE)
+                    prefs.edit().putFloat(SubtitleStyle.KEY_SIZE, subSizeFrac).apply()
+                },
+                bottomFrac = subBottomFrac,
+                onBottomDelta = { d ->
+                    subBottomFrac = (subBottomFrac + d * SubtitleStyle.STEP_BOTTOM)
+                        .coerceIn(SubtitleStyle.MIN_BOTTOM, SubtitleStyle.MAX_BOTTOM)
+                    prefs.edit().putFloat(SubtitleStyle.KEY_BOTTOM, subBottomFrac).apply()
+                },
+                fontId = subFontId,
+                fonts = availableFonts,
+                onFont = { subFontId = it; prefs.edit().putString(SubtitleStyle.KEY_FONT, it).apply() },
+                fillColor = subFill,
+                onFill = { subFill = it; prefs.edit().putInt(SubtitleStyle.KEY_FILL, it).apply() },
+                edgeColor = subEdgeColor,
+                onEdge = { subEdgeColor = it; prefs.edit().putInt(SubtitleStyle.KEY_EDGE_COLOR, it).apply() },
+                edgeType = subEdgeType,
+                onEdgeType = { subEdgeType = it; prefs.edit().putInt(SubtitleStyle.KEY_EDGE_TYPE, it).apply() },
+                onReset = {
+                    subSizeFrac = SubtitleStyle.DEF_SIZE
+                    subBottomFrac = SubtitleStyle.DEF_BOTTOM
+                    subFontId = SubtitleStyle.DEF_FONT
+                    subFill = SubtitleStyle.DEF_FILL
+                    subEdgeColor = SubtitleStyle.DEF_EDGE_COLOR
+                    subEdgeType = SubtitleStyle.DEF_EDGE_TYPE
+                    prefs.edit()
+                        .putFloat(SubtitleStyle.KEY_SIZE, SubtitleStyle.DEF_SIZE)
+                        .putFloat(SubtitleStyle.KEY_BOTTOM, SubtitleStyle.DEF_BOTTOM)
+                        .putString(SubtitleStyle.KEY_FONT, SubtitleStyle.DEF_FONT)
+                        .putInt(SubtitleStyle.KEY_FILL, SubtitleStyle.DEF_FILL)
+                        .putInt(SubtitleStyle.KEY_EDGE_COLOR, SubtitleStyle.DEF_EDGE_COLOR)
+                        .putInt(SubtitleStyle.KEY_EDGE_TYPE, SubtitleStyle.DEF_EDGE_TYPE)
+                        .apply()
+                },
+                onDismiss = { subtitleEditorOpen = false; controlsVisible = true },
             )
         }
 

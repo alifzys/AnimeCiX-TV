@@ -77,6 +77,7 @@ internal fun PlayerOverlay(
     onOpenSpeed: () -> Unit,
     onOpenFansub: () -> Unit,
     onOpenSubtitle: () -> Unit,
+    onOpenSubtitleEditor: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
 ) {
     val pct = androidx.compose.runtime.remember {
@@ -179,6 +180,8 @@ internal fun PlayerOverlay(
                 if (hasSubtitles) {
                     Spacer(Modifier.width(6.dp))
                     CtrlPill(text = "⌨ $subtitleLabel", onClick = onOpenSubtitle)
+                    Spacer(Modifier.width(6.dp))
+                    CtrlPill(text = "Aa", onClick = onOpenSubtitleEditor)
                 }
 
                 if (hasMultipleSources) {

@@ -121,6 +121,8 @@ private fun DetailContent(
     val scope = rememberCoroutineScope()
     // Üstteki ilk buton ("Listeme Ekle") — bölümlerden yukarı çıkışta buraya dönülür.
     val topFocus = remember { FocusRequester() }
+    // Girişte en üste odaklan → kullanıcı hemen fotoğrafı görür ve yukarı çıkış zinciri kurulur.
+    LaunchedEffect(Unit) { runCatching { topFocus.requestFocus() } }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -138,7 +140,12 @@ private fun DetailContent(
         )
         if (detail.seasons.size > 1) {
             Spacer(Modifier.height(20.dp))
-            SeasonSelector(seasons = detail.seasons, current = detail.currentSeason, onSelect = onSeasonSelected)
+            SeasonSelector(
+                seasons = detail.seasons,
+                current = detail.currentSeason,
+                onSelect = onSeasonSelected,
+                topFocus = topFocus,
+            )
         }
         Spacer(Modifier.height(20.dp))
         Row(
@@ -414,7 +421,12 @@ private fun ActionPill(text: String, onClick: () -> Unit, modifier: Modifier = M
 }
 
 @Composable
-private fun SeasonSelector(seasons: List<SeasonInfo>, current: Int, onSelect: (SeasonInfo) -> Unit) {
+private fun SeasonSelector(
+    seasons: List<SeasonInfo>,
+    current: Int,
+    onSelect: (SeasonInfo) -> Unit,
+    topFocus: FocusRequester? = null,
+) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 48.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -423,6 +435,9 @@ private fun SeasonSelector(seasons: List<SeasonInfo>, current: Int, onSelect: (S
             val selected = s.number == current
             androidx.tv.material3.Surface(
                 onClick = { onSelect(s) },
+                // Sezon seçiciden YUKARI → üstteki buton (fotoğrafa/başa dönüş zinciri).
+                modifier = if (topFocus != null)
+                    Modifier.focusProperties { up = topFocus } else Modifier,
                 shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
                 colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
                     containerColor = if (selected) Color(0xFFE53935) else Color(0x22FFFFFF),

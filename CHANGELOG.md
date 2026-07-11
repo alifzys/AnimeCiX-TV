@@ -7,6 +7,18 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-07-12
+
+### Eklendi
+- **Altyazı Düzenleyici (oynatıcıda, canlı):** kontrol çubuğundaki **"Aa"** butonu. Boyut ve dikey konum (slider), font, iç/dış renk ve kenar/gölge (Kontur/Gölge/Kabartma/Kapalı) canlı önizlemeyle ayarlanır. Ayarlardaki eski "Altyazı Boyutu" düğmeleri kaldırıldı.
+- **Font seçimi:** gömülü presetler (Amaranth, Quicksand, PT Sans, PT Serif — hepsi SIL OFL) **+** kendi fontun: `.ttf/.otf` dosyanı `Android/data/com.alifzys.an1mecix/files/fonts/` klasörüne atınca düzenleyicide listelenir.
+- **Renk ayarları (Ayarlar → Renk):** Parlaklık, Kontrast, Doygunluk, Sıcaklık. Media3 renk efektleriyle uygulanır (değişiklik için bölümü yeniden açın).
+- **Kontroller açılınca altyazı yukarı kayar** → ilerleme çubuğunun arkasında kalmaz.
+
+### Düzeltildi
+- **Her bölüm başında "Sonraki Bölüm" bandı çıkıyordu** → bölüm geçişinde bir önceki bölümün (sona yakın) konum/süre değerleri kısa süre taşınıp "bitişe kalan sn" sezgisini yanlış tetikliyordu. Artık geçişte sıfırlanır ve sezgi ilk 90 sn'de hiç çalışmaz.
+- **Anime detayında bir kez aşağı inince en üste/fotoğrafa dönülemiyordu** (çok sezonlu başlıklarda) → sezon seçicisinden yukarı da üstteki butona yönlendirilir; ekrana girişte en üste odaklanılır.
+
 ## [1.1.7] - 2026-07-05
 
 ### Eklendi
@@ -71,7 +83,8 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.7...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.8...HEAD
+[1.1.8]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.8
 [1.1.7]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.7
 [1.1.6]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.6
 [1.1.5]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.5

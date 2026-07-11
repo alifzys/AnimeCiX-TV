@@ -62,16 +62,19 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         )
     }
-    var subtitleSize by remember {
-        mutableStateOf(
-            when (prefs.getInt("subtitle_size", 1)) {
-                0 -> "Küçük"
-                2 -> "Büyük"
-                3 -> "Çok Büyük"
-                else -> "Orta"
-            }
-        )
+    // Renk ayarları adım (-2..+2) olarak saklanır; oynatıcı efekte çevirir.
+    fun stepLabel(i: Int) = when (i) { -2 -> "-2"; -1 -> "-1"; 1 -> "+1"; 2 -> "+2"; else -> "0" }
+    fun parseStep(s: String) = when (s) { "-2" -> -2; "-1" -> -1; "+1" -> 1; "+2" -> 2; else -> 0 }
+    fun tempLabel(i: Int) = when (i) {
+        -2 -> "Çok Soğuk"; -1 -> "Soğuk"; 1 -> "Sıcak"; 2 -> "Çok Sıcak"; else -> "Normal"
     }
+    fun parseTemp(s: String) = when (s) {
+        "Çok Soğuk" -> -2; "Soğuk" -> -1; "Sıcak" -> 1; "Çok Sıcak" -> 2; else -> 0
+    }
+    var brightness by remember { mutableStateOf(stepLabel(prefs.getInt("color_brightness", 0))) }
+    var contrast by remember { mutableStateOf(stepLabel(prefs.getInt("color_contrast", 0))) }
+    var saturation by remember { mutableStateOf(stepLabel(prefs.getInt("color_saturation", 0))) }
+    var temperature by remember { mutableStateOf(tempLabel(prefs.getInt("color_temp", 0))) }
 
     Row(Modifier.fillMaxSize().background(Color(0xFF0A0A0F))) {
 
@@ -231,26 +234,82 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(32.dp))
 
+            // ── RENK ────────────────────────────────────────────────
+            SectionLabel("RENK")
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "Renk değişiklikleri için bölümü yeniden açın.",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+
+            OptionRow(
+                title = "Parlaklık",
+                subtitle = "Görüntünün genel aydınlığı.",
+                options = listOf("-2", "-1", "0", "+1", "+2"),
+                selected = brightness,
+                onSelect = { opt ->
+                    brightness = opt
+                    prefs.edit().putInt("color_brightness", parseStep(opt)).apply()
+                },
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            OptionRow(
+                title = "Kontrast",
+                subtitle = "Açık ve koyu tonlar arasındaki fark.",
+                options = listOf("-2", "-1", "0", "+1", "+2"),
+                selected = contrast,
+                onSelect = { opt ->
+                    contrast = opt
+                    prefs.edit().putInt("color_contrast", parseStep(opt)).apply()
+                },
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            OptionRow(
+                title = "Doygunluk",
+                subtitle = "Renklerin canlılığı (soluk ↔ canlı).",
+                options = listOf("-2", "-1", "0", "+1", "+2"),
+                selected = saturation,
+                onSelect = { opt ->
+                    saturation = opt
+                    prefs.edit().putInt("color_saturation", parseStep(opt)).apply()
+                },
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            OptionRow(
+                title = "Sıcaklık",
+                subtitle = "Renk tonu — soğuk (mavi) ↔ sıcak (kırmızı/sarı).",
+                options = listOf("Çok Soğuk", "Soğuk", "Normal", "Sıcak", "Çok Sıcak"),
+                selected = temperature,
+                onSelect = { opt ->
+                    temperature = opt
+                    prefs.edit().putInt("color_temp", parseTemp(opt)).apply()
+                },
+            )
+
+            Spacer(Modifier.height(32.dp))
+
             // ── ALTYAZI ─────────────────────────────────────────────
             SectionLabel("ALTYAZI")
             Spacer(Modifier.height(12.dp))
 
-            OptionRow(
-                title = "Altyazı Boyutu",
-                subtitle = "Yapay çeviri / soft-sub altyazıların yazı boyutu. " +
-                    "Değişiklik için bölümü yeniden açın.",
-                options = listOf("Küçük", "Orta", "Büyük", "Çok Büyük"),
-                selected = subtitleSize,
-                onSelect = { opt ->
-                    subtitleSize = opt
-                    val i = when (opt) {
-                        "Küçük" -> 0
-                        "Büyük" -> 2
-                        "Çok Büyük" -> 3
-                        else -> 1
-                    }
-                    prefs.edit().putInt("subtitle_size", i).apply()
-                },
+            InfoRow(
+                title = "Altyazı Düzenleyici",
+                value = "Oynatıcıda: Aa",
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Boyut, konum, font, iç/dış renk ve gölge artık oynatıcıdaki " +
+                    "\"Aa\" butonundan canlı ayarlanır.",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 12.sp,
             )
 
             Spacer(Modifier.height(32.dp))
@@ -259,7 +318,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             SectionLabel("UYGULAMA")
             Spacer(Modifier.height(12.dp))
 
-            InfoRow(title = "Sürüm", value = "1.1.7")
+            InfoRow(title = "Sürüm", value = "1.1.8")
             Spacer(Modifier.height(8.dp))
             InfoRow(title = "Geliştirici", value = "Alifzys")
             Spacer(Modifier.height(8.dp))

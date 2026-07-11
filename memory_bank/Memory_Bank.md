@@ -43,6 +43,15 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
+### 2026-07-12 — Altyazı düzenleyici + renk ayarı + 2 bug fix (v1.1.8, KOD HAZIR / YAYINLANMADI)
+- **Altyazı Düzenleyici (oynatıcıda, canlı):** kontrol çubuğunda **"Aa"** butonu → `SubtitleEditorSheet` (`ui/player/PlayerSubtitleEditor.kt`). Boyut & dikey konum slider (SOL/SAĞ), font seçimi, iç renk, dış renk, kenar/gölge (`CaptionStyleCompat.EDGE_TYPE_*`), canlı önizleme + "Sıfırla". Değerler `PlayerContent` state'inde tutulup `AndroidView(update=...)` ile `subtitleView`'a uygulanır. Prefs anahtarları/varsayılanları `ui/player/SubtitleStyle.kt` (`sub_size_frac`/`sub_bottom_frac`/`sub_font`/`sub_fill_color`/`sub_edge_color`/`sub_edge_type`). Eski `subtitle_size` OptionRow ayarlardan KALDIRILDI.
+- **Font:** preset `res/font/` (amaranth, quicksand, ptsans, ptserif — hepsi OFL, lisanslar `docs/fonts/`) + klasör tarama `getExternalFilesDir("fonts")` ve public `Download/AnimeCiX-Fonts` (`Typeface.createFromFile`, id `file:<yol>`). Önizleme fontu Compose `FontFamily(Font(res/File))`.
+- **Renk ayarları (Ayarlar → RENK):** Parlaklık/Kontrast/Doygunluk/Sıcaklık, adım -2..+2 (prefs `color_brightness/contrast/saturation/temp`). Oynatıcı build bloğunda Media3 `Brightness/Contrast/HslAdjustment(adjustSaturation)/RgbAdjustment(red/blue scale)` efektlerine çevrilir; **bölüm yeniden açılınca** uygulanır (Anime4K gibi). Efektler `buildList<Effect>` ile enhance + renk birlikte.
+- **Altyazı kontrol açılınca yukarı:** `update`'te `controlsVisible` iken `setBottomPaddingFraction(base + CONTROLS_LIFT)` → ilerleme çubuğunun arkasında kalmaz.
+- **BUG FIX — her bölüm başı "Sonraki Bölüm":** bölüm geçişinde `positionMs/durationMs` eski (sona yakın) değerleri ~500ms taşıyıp "bitişe kalan sn" sezgisini tetikliyordu (resume ≥%93'te de). Fix: prepare `LaunchedEffect`'inde pos/dur sıfırlanır + sezgi `posSec > ENDING_SHOW_MAX(90)` şartı.
+- **BUG FIX — detayda üste/fotoğrafa dönememe (çok sezon):** `SeasonSelector` item'larına `focusProperties{ up=topFocus }` + girişte `topFocus.requestFocus()`.
+- **Durum:** versionCode 11 / "1.1.8". `assembleRelease` ✅ (3 APK ~4.5MB, 4 font gömülü: res 4G/LY/wh/8L.ttf). CHANGELOG+README+Settings güncellendi. **Commit/tag/GitHub release YAPILMADI — kullanıcı onayı bekleniyor.**
+
 ### 2026-07-05 — Altyazı boyutu + Amaranth font (v1.1.7)
 - Altyazı boyutu ayarı (Ayarlar → Altyazı; pref `subtitle_size` 0-3) + okunur siyah kontur.
 - **Altyazı fontu Amaranth** (varsayılan): `res/font/amaranth.ttf` (OFL, `docs/fonts/Amaranth-OFL.txt`), `ResourcesCompat.getFont(ctx, R.font.amaranth)` → `CaptionStyleCompat` typeface. APK'da resource-shrink ile `res/4G.ttf` olarak gömülü.
