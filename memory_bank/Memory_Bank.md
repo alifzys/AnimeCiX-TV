@@ -43,13 +43,13 @@ Kullanıcı bir başlık seçer → `HomeViewModel`/`DetailViewModel` → `Anime
 ---
 
 ## 🔧 Son Değişiklikler
-### 2026-07-12 — DÜZELTME: editör Ayarlar'a + otomatik Renk Canlandırma (v1.1.9)
-- **Kullanıcı geri bildirimi (önemli):** v1.1.8'de (1) altyazı düzenleyici SADECE oynatıcıdaydı → Ayarlar'da istiyordu; (2) manuel renk slider'ları istemiyordu → "eski soluk anime renklerini AI ile yeniymiş gibi canlandır" istiyordu.
+### 2026-07-12 — DÜZELTME: editör Ayarlar'a + otomatik Renk Canlandırma (1.1.8 YERİNDE DEĞİŞTİRİLDİ)
+- **Kullanıcı geri bildirimi (önemli):** ilk 1.1.8'de (1) altyazı düzenleyici SADECE oynatıcıdaydı → Ayarlar'da istiyordu; (2) manuel renk slider'ları istemiyordu → "eski soluk anime renklerini AI ile yeniymiş gibi canlandır" istiyordu.
 - **Altyazı Düzenleyici Ayarlar'a eklendi:** `SubtitleEditorScreen` (stateful, tam ekran, boş gradient önizleme zemini + sağda `SubtitleEditorSheet` panel), Ayarlar → ALTYAZI → "Altyazı Düzenleyici" (`ActionRow` → overlay). Oynatıcıdaki "Aa" (canlı) da KALDI. Aynı prefs (`sub_*`).
 - **Renk: manuel KALDIRILDI → otomatik `ColorReviveEffect`** (`ui/player/ColorRevive.kt`, GL shader): levels esnetme + kontrast S-eğrisi + vibrance + doygunluk. Ayarlar → RENK → "Renk Canlandırma (AI)" Kapalı/Hafif/Güçlü (pref `color_revive` 0/1/2 → strength 0.5/1.0). Player effect list'te enhance'ten sonra eklenir. **Not: gerçek ML değil, shader (TV'de real-time ML imkânsız); kullanıcıya açıkça söylendi.** Media3 Brightness/Contrast/HslAdjustment/RgbAdjustment ve `color_brightness/contrast/saturation/temp` prefleri kaldırıldı.
-- versionCode 12 / "1.1.9". assembleRelease ✅.
+- **⚠️ Kullanıcı isteğiyle YENİ SÜRÜM AÇILMADI — mevcut v1.1.8 DEĞİŞTİRİLDİ:** versionName/versionCode 1.1.8/11 KORUNDU, tag `v1.1.8` yeni commit `818ac3b`'ye force taşındı (eski `2687e91`), release APK'ları API ile silinip yeniden yüklendi + body güncellendi. **Sonuç:** ilk 1.1.8 kurulu (çok az) cihaz auto-update ile bunu ALMAZ (isNewer eşit → false) → elle sideload; 1.1.7 ve altı auto-update ile alır. assembleRelease ✅.
 
-### 2026-07-12 — Altyazı düzenleyici + renk ayarı + 2 bug fix (v1.1.8, YAYINLANDI)
+### 2026-07-12 — Altyazı düzenleyici + renk ayarı + 2 bug fix (ilk v1.1.8, sonradan degistirildi)
 - **Altyazı Düzenleyici (oynatıcıda, canlı):** kontrol çubuğunda **"Aa"** butonu → `SubtitleEditorSheet` (`ui/player/PlayerSubtitleEditor.kt`). Boyut & dikey konum slider (SOL/SAĞ), font seçimi, iç renk, dış renk, kenar/gölge (`CaptionStyleCompat.EDGE_TYPE_*`), canlı önizleme + "Sıfırla". Değerler `PlayerContent` state'inde tutulup `AndroidView(update=...)` ile `subtitleView`'a uygulanır. Prefs anahtarları/varsayılanları `ui/player/SubtitleStyle.kt` (`sub_size_frac`/`sub_bottom_frac`/`sub_font`/`sub_fill_color`/`sub_edge_color`/`sub_edge_type`). Eski `subtitle_size` OptionRow ayarlardan KALDIRILDI.
 - **Font:** preset `res/font/` (amaranth, quicksand, ptsans, ptserif — hepsi OFL, lisanslar `docs/fonts/`) + klasör tarama `getExternalFilesDir("fonts")` ve public `Download/AnimeCiX-Fonts` (`Typeface.createFromFile`, id `file:<yol>`). Önizleme fontu Compose `FontFamily(Font(res/File))`.
 - **Renk ayarları (Ayarlar → RENK):** Parlaklık/Kontrast/Doygunluk/Sıcaklık, adım -2..+2 (prefs `color_brightness/contrast/saturation/temp`). Oynatıcı build bloğunda Media3 `Brightness/Contrast/HslAdjustment(adjustSaturation)/RgbAdjustment(red/blue scale)` efektlerine çevrilir; **bölüm yeniden açılınca** uygulanır (Anime4K gibi). Efektler `buildList<Effect>` ile enhance + renk birlikte.

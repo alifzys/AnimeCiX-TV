@@ -1,6 +1,8 @@
 package com.alifzys.an1mecix.ui.player
 
 import android.view.KeyEvent as AKeyEvent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -69,8 +71,7 @@ internal fun PlayerOverlay(
     nextEp: Episode?,
     playFocus: FocusRequester,
     barFocus: FocusRequester,
-    onSeekBack: () -> Unit,
-    onSeekFwd: () -> Unit,
+    onScrub: (dir: Int, repeatCount: Int) -> Unit,
     onTogglePlay: () -> Unit,
     onHideControls: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -212,8 +213,7 @@ internal fun PlayerOverlay(
             ProgressBar(
                 pct = pct.value,
                 barFocus = barFocus,
-                onSeekBack = onSeekBack,
-                onSeekFwd = onSeekFwd,
+                onScrub = onScrub,
                 onTogglePlay = onTogglePlay,
                 onHideControls = onHideControls,
             )
@@ -287,17 +287,22 @@ private fun CtrlPill(text: String, onClick: () -> Unit) {
 private fun ProgressBar(
     pct: Float,
     barFocus: FocusRequester,
-    onSeekBack: () -> Unit,
-    onSeekFwd: () -> Unit,
+    onScrub: (dir: Int, repeatCount: Int) -> Unit,
     onTogglePlay: () -> Unit,
     onHideControls: () -> Unit,
 ) {
     // Birincil oynatıcı odağı: kontroller açılınca buraya odaklanılır.
-    // SOL/SAĞ → ileri-geri sarma, OK → oynat/duraklat, AŞAĞI → kontrolleri gizle,
-    // YUKARI → üstteki buton satırına geç (doğal odak akışı).
+    // SOL/SAĞ → hızlanan smooth sarma (basılı tutunca), OK → oynat/duraklat,
+    // AŞAĞI → kontrolleri gizle, YUKARI → üstteki buton satırına geç.
     var focused by remember { mutableStateOf(false) }
     val barH = if (focused) 4.dp else 2.dp
     val dotSize = if (focused) 16.dp else 10.dp
+    // Konum değişimini yumuşat: tek adımda da, hızlı sarmada da smooth kayar.
+    val shownPct by animateFloatAsState(
+        targetValue = pct.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 130),
+        label = "scrubPct",
+    )
 
     Box(
         modifier = Modifier
@@ -309,8 +314,8 @@ private fun ProgressBar(
             .onKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (ev.nativeKeyEvent.keyCode) {
-                    AKeyEvent.KEYCODE_DPAD_LEFT  -> { onSeekBack(); true }
-                    AKeyEvent.KEYCODE_DPAD_RIGHT -> { onSeekFwd();  true }
+                    AKeyEvent.KEYCODE_DPAD_LEFT  -> { onScrub(-1, ev.nativeKeyEvent.repeatCount); true }
+                    AKeyEvent.KEYCODE_DPAD_RIGHT -> { onScrub(1, ev.nativeKeyEvent.repeatCount); true }
                     AKeyEvent.KEYCODE_DPAD_CENTER,
                     AKeyEvent.KEYCODE_ENTER,
                     AKeyEvent.KEYCODE_NUMPAD_ENTER -> { onTogglePlay(); true }
@@ -329,10 +334,10 @@ private fun ProgressBar(
                 .background(Color.White.copy(alpha = if (focused) 0.3f else 0.22f))
         )
         // Dolu kısım
-        if (pct > 0.001f) {
+        if (shownPct > 0.001f) {
             Box(
                 Modifier
-                    .fillMaxWidth(pct)
+                    .fillMaxWidth(shownPct)
                     .height(barH)
                     .clip(RoundedCornerShape(2.dp))
                     .background(if (focused) Color(0xFFE53935) else Color.White)
@@ -341,7 +346,7 @@ private fun ProgressBar(
         // Seeker dot — dolu kısmın ucunda, dikeyde ortalanmış
         Box(
             Modifier
-                .fillMaxWidth(pct.coerceAtLeast(0f))
+                .fillMaxWidth(shownPct.coerceAtLeast(0f))
                 .fillMaxHeight(),
             contentAlignment = Alignment.CenterEnd,
         ) {

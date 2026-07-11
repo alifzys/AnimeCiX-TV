@@ -7,6 +7,11 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-07-12
+
+### Değiştirildi
+- **İleri/geri sarma tamamen yenilendi (hızlanan + smooth):** artık her tuşta ayrı ayrı sarma (ve her seferinde bekleme) yok. Sol/sağ **basılı tuttukça hızlanır** (adım büyür), bıraktığında **tek seferde** o konuma gidip normal hızda devam eder. Çubuk hem tek adımda hem hızlı sarmada yumuşak kayar. (Önceki 10 sn'lik "atla-bekle-atla" davranışı kaldırıldı.)
+
 ## [1.1.8] - 2026-07-12
 
 ### Eklendi
@@ -83,7 +88,8 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Otomatik güncelleme:** açılışta GitHub Releases'ten yeni sürüm kontrolü, indirme ve kurulum.
 - **ABI-split APK'lar:** `universal`, `arm64-v8a`, `armeabi-v7a`.
 
-[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.8...HEAD
+[Unreleased]: https://github.com/alifzys/AnimeCiX-TV/compare/v1.1.9...HEAD
+[1.1.9]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.9
 [1.1.8]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.8
 [1.1.7]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.7
 [1.1.6]: https://github.com/alifzys/AnimeCiX-TV/releases/tag/v1.1.6

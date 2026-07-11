@@ -58,7 +58,6 @@ import kotlinx.coroutines.delay
 // Ending için markör yoksa "bitişe kalan sn" sezgisel geçişi devreye girer.
 private const val ENDING_SHOW_MIN = 4L         // bitişe kalan sn alt sınır
 private const val ENDING_SHOW_MAX = 90L        // bitişe kalan sn üst sınır
-private const val SEEK_STEP_MS = 10_000L       // D-pad sol/sağ sarma adımı
 
 @androidx.media3.common.util.UnstableApi
 @Composable
@@ -245,6 +244,47 @@ private fun PlayerContent(
         exoPlayer.trackSelectionParameters = p.build()
     }
 
+    // ── Scrubbing: hızlanan + smooth ileri-geri sarma ───────────────────────
+    // Basılı tutarken HER tuşta seekTo yapmıyoruz (her seek buffer'lar → kasar).
+    // Sadece önizleme hedefini kaydırıyoruz; tuş tekrarı arttıkça adım büyür
+    // (hızlanır). Basış durunca (kısa süre yeni tuş gelmezse) TEK seferde hedefe
+    // seek edilip normal hızda devam edilir.
+    var scrubbing by remember { mutableStateOf(false) }
+    var scrubTargetMs by remember { mutableLongStateOf(0L) }
+    var scrubWasPlaying by remember { mutableStateOf(true) }
+
+    fun scrubStep(dir: Int, repeatCount: Int) {
+        if (!scrubbing) {
+            scrubbing = true
+            scrubWasPlaying = exoPlayer.playWhenReady
+            scrubTargetMs = exoPlayer.currentPosition
+            exoPlayer.playWhenReady = false
+        }
+        // Ne kadar uzun basılı → o kadar büyük adım (hızlanma).
+        val step = when {
+            repeatCount == 0 -> 10_000L
+            repeatCount < 5 -> 15_000L
+            repeatCount < 10 -> 30_000L
+            repeatCount < 18 -> 60_000L
+            else -> 120_000L
+        }
+        val dur = durationMs.takeIf { it > 0 } ?: exoPlayer.duration.coerceAtLeast(0L)
+        val upper = if (dur > 0) dur else Long.MAX_VALUE
+        scrubTargetMs = (scrubTargetMs + dir * step).coerceIn(0L, upper)
+    }
+
+    // Sarma durunca hedefe seek + önceki oynatma durumuna dön.
+    LaunchedEffect(scrubbing, scrubTargetMs) {
+        if (scrubbing) {
+            delay(300)
+            exoPlayer.seekTo(scrubTargetMs)
+            positionMs = scrubTargetMs
+            exoPlayer.playWhenReady = scrubWasPlaying
+            isPlaying = scrubWasPlaying
+            scrubbing = false
+        }
+    }
+
     // ── Opening / Ending atlama (ayarlardan) ───────────────────────────────
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
@@ -333,15 +373,13 @@ private fun PlayerContent(
                 if (!controlsVisible) {
                     when (kc) {
                         AKeyEvent.KEYCODE_DPAD_LEFT -> {
-                            exoPlayer.seekTo((exoPlayer.currentPosition - SEEK_STEP_MS).coerceAtLeast(0))
                             controlsVisible = true
+                            scrubStep(-1, ev.nativeKeyEvent.repeatCount)
                             return@onKeyEvent true
                         }
                         AKeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            val dur = exoPlayer.duration
-                            val target = exoPlayer.currentPosition + SEEK_STEP_MS
-                            exoPlayer.seekTo(if (dur > 0) target.coerceAtMost(dur) else target)
                             controlsVisible = true
+                            scrubStep(1, ev.nativeKeyEvent.repeatCount)
                             return@onKeyEvent true
                         }
                         AKeyEvent.KEYCODE_DPAD_CENTER,
@@ -405,7 +443,7 @@ private fun PlayerContent(
                 seasonNumber = state.episode.seasonNumber,
                 episodeNumber = state.episode.episodeNumber,
                 isPlaying = { isPlaying },
-                positionMs = { positionMs },
+                positionMs = { if (scrubbing) scrubTargetMs else positionMs },
                 durationMs = { durationMs },
                 qualityLabel = state.currentQuality.label,
                 currentSpeed = currentSpeed,
@@ -417,8 +455,7 @@ private fun PlayerContent(
                 nextEp = nextEp,
                 playFocus = playFocus,
                 barFocus = barFocus,
-                onSeekBack = { exoPlayer.seekTo((positionMs - SEEK_STEP_MS).coerceAtLeast(0)) },
-                onSeekFwd = { exoPlayer.seekTo((positionMs + SEEK_STEP_MS).coerceAtMost(durationMs)) },
+                onScrub = { dir, repeatCount -> scrubStep(dir, repeatCount) },
                 onTogglePlay = { togglePlayback() },
                 onHideControls = { controlsVisible = false },
                 onOpenSettings = { settingsOpen = true },
